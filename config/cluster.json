@@ -1,0 +1,9 @@
+{
+    'version': "1.0",
+    'default': "--partition=ccr,norm --time=00:30:00 --mem=1G",
+    'bcl2fastq': "--partition=ccr,norm --time=5:00:00 --mem=50G --cpus-per-task=16 --gres=lscratch:100",
+    'demuxStats': "--partition=ccr,norm --time=00:30:00 --mem=1G",
+    'sampleFolders': "--partition=ccr,norm --time=1:00:00 --mem=2G",
+    'app': "--partition=ccr,norm --exclusive --time=10:00:00 --mem=150G --cpus-per-task=56 --gres=lscratch:200",
+    'group': "Compass"
+}
