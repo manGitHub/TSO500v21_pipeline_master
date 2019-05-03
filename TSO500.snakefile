@@ -10,7 +10,7 @@ configfile: PIPELINE + '/config/cluster.json'
 GROUP = config['group']
 VERSION = config['version']
 APP_DIR = os.environ['APP_DIR']
-
+RESULT_DIR = os.environ['RESULT_DIR']
 DATA = defaultdict(list)
 
 F = config['RUNID'].split('_')
@@ -57,8 +57,9 @@ rule all:
     input: 
         expand(DEMUX_DIR + '/TSO500_Demux/{runid}_{data}/Reports/{runid}_{data}.{ext}', runid = config['RUNID'], data = DATA.keys(), ext = ['html', 'csv']),
         expand(DEMUX_DIR + '/TSO500_Demux/{runid}_DNA/{sample}/SampleSheet.csv', runid = config['RUNID'], sample = DATA['DNA']),
-        expand(DEMUX_DIR + '/TSO500_Demux/{runid}_RNA/{sample}/SampleSheet.csv', runid = config['RUNID'], sample = DATA['RNA'])
-
+        expand(DEMUX_DIR + '/TSO500_Demux/{runid}_RNA/{sample}/SampleSheet.csv', runid = config['RUNID'], sample = DATA['RNA']),
+        expand(RESULT_DIR + '/{sample}/{runid}_{sample}_DNA.done',runid = config['RUNID'],sample = DATA['DNA']),
+        expand(RESULT_DIR + '/{sample}/{runid}_{sample}_RNA.done',runid = config['RUNID'],sample = DATA['RNA'])
 rule sampleSheet:
     input:
         sampleSheet = RUN_DIR + '/{runid}/SampleSheet.csv'
@@ -121,7 +122,7 @@ rule sampleFolders:
 
     output:
         DEMUX_DIR + '/TSO500_Demux/{runid}_{data,\w{3}}/{sample}/SampleSheet.csv',
-        touch(DEMUX_DIR + '/FastqFolder/{sample}/rsync.{runid}_{data,\w{3}}.done')
+        touch(DEMUX_DIR + '/FastqFolder/{sample}/rsync.{runid}_{data,\w{3}}.done')                #this file is created so that the wild cards can flow to next rule
  
     params:
         rulename = 'sampleFolders.{runid}.{data}.{sample}',
@@ -134,11 +135,42 @@ rule sampleFolders:
         for fastq in `find $DEMUX_DIR/TSO500_Demux/{wildcards.runid}_{wildcards.data}/ -maxdepth 1 -name "{wildcards.sample}_*.fastq.gz"`;do ln -s $fastq $DEMUX_DIR/TSO500_Demux/{wildcards.runid}_{wildcards.data}/{wildcards.sample}/.;done
         rsync -avzL $DEMUX_DIR/TSO500_Demux/{wildcards.runid}_{wildcards.data}/{wildcards.sample} $DEMUX_DIR/FastqFolder
         ''' 
-"""
-rule launchApps:
-    input:
-        sampleSheet = '/data/Compass/DATA/NextSeq/{sample}'
 
+rule launchDNA_App:
+    input:
+         out = DEMUX_DIR + '/FastqFolder/{sample}/rsync.{runid}_DNA.done'
     output:
-        ' 
-"""
+#       RESULT_DIR + '/{sample}/Results/MetricsReport.tsv',
+       touch(RESULT_DIR + '/{sample}/{runid}_{sample}_DNA.done')
+    params:
+        rulename = 'launchDNA_App.{sample}',
+        resources = config['app'],
+	ref = config['TSO500_reference'],
+        DNA_app = config['TSO500_app'],
+        out_dir = RESULT_DIR,
+	dir = DEMUX_DIR + '/FastqFolder/{sample}'
+    shell:
+        '''
+         {PIPELINE}/scripts/TSO500_app.sh {params.dir} {params.DNA_app} {params.out_dir} {params.ref}
+         
+        '''
+
+rule LaunchRNA_App:
+    input:
+         out = DEMUX_DIR + '/FastqFolder/{sample}/rsync.{runid}_RNA.done'
+    output:
+        touch(RESULT_DIR + '/{sample}/{runid}_{sample}_RNA.done')
+    params:
+        rulename = 'launchRNA_App.{sample}',
+        resources = config['app'],
+        ref = config['TSO170_reference'],
+        RNA_app = config['TSO170_app'],
+        out_dir = RESULT_DIR + '/{sample}',
+        dir = DEMUX_DIR + '/FastqFolder/{sample}'
+    shell:
+        '''
+         if [ -d "{params.out_dir}" ]; then rm -Rf {params.out_dir}; fi
+         {PIPELINE}/scripts/TSO170_app.sh -fastq {params.dir} {params.ref} {params.out_dir}
+
+        '''
+
