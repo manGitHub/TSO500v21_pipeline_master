@@ -15,8 +15,9 @@ fi
 
 RUN_DIR=/data/Compass/NextSeq_raw
 DEMUX_DIR=/data/Compass/DATA/NextSeq
-APP_DIR=/data/Compass/Analysis/ProcessedResults_NexSeq
+RESULT_DIR=/data/Compass/Analysis/ProcessedResults_NexSeq
 PIPELINE_HOME=/data/Compass/Tools/TSO500_pipeline
+APP_DIR=/data/Compass/Tools
 dryrun=
 runid=
 
@@ -34,7 +35,7 @@ while [ "$1" != "" ]; do
 			DEMUX_DIR=$1
 			;;
         --resultsdir )	shift
-			APP_DIR=$1
+			RESULT_DIR=$1
 			;;
         --pipeline )	shift
 			PIPELINE_HOME=$1
@@ -47,14 +48,16 @@ done
 
 export RUN_DIR
 export DEMUX_DIR
-export APP_DIR
+export RESULT_DIR
 export PIPELINE_HOME
+export APP_DIR
 export DATE=`date +'%m%d%Y_%H%M%S'`
 
 echo RUN_DIR: $RUN_DIR
 echo DEMUX_DIR: $DEMUX_DIR
-echo APP_DIR: $APP_DIR
+echo RESULT_DIR: $RESULT_DIR
 echo PIPELINE_HOME: $PIPELINE_HOME
+echo APP_DIR: $APP_DIR
 echo DATETIME: $DATE
 
 YAML=${runid}.yaml
