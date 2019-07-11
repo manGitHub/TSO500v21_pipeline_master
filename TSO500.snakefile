@@ -41,17 +41,21 @@ with open(samplesheet, 'rt') as S:
 #pp(DATA)
 #pp(DATA.keys())
 
+runid = config['RUNID']
+MAIL=config['mail']
+TSO500=config['TSO500_version']
+TSO170=config['TSO170_version']
+FILE= expand(DEMUX_DIR + '/TSO500_Demux/{runid}_{data}/Reports/{runid}_{data}.html',runid = config['RUNID'],data = DATA.keys())
 onstart:
     print('Started workflow')
-
+    shell("echo 'TSO500 pipeline {VERSION} started  on run: {runid}' | mutt -s 'TSO500 Pipeline: {runid}'  {MAIL} ")
 onsuccess:
     print('Workflow finished, no error')
-    #shell("chmod ...")
+    shell("echo 'TSO500 pipeline {VERSION} with TSO500_app {TSO500} ,TSO170_app {TSO170} completed successfully  on run: {runid}' | mutt -s 'TSO500 Pipeline: {runid}' -a {FILE}  {MAIL} ")
 
 onerror:
     print('An error occured')
-    #shell("mail -s "an error occurred" youremail@provider.com < {log}")
-
+    shell("echo 'TSO500 pipeline {VERSION} error occurred  on run: {runid}' | mutt  -s 'TSO500 Pipeline: {runid}' {MAIL} ")
 
 rule all:
     input: 
@@ -59,7 +63,9 @@ rule all:
         expand(DEMUX_DIR + '/TSO500_Demux/{runid}_DNA/{sample}/SampleSheet.csv', runid = config['RUNID'], sample = DATA['DNA']),
         expand(DEMUX_DIR + '/TSO500_Demux/{runid}_RNA/{sample}/SampleSheet.csv', runid = config['RUNID'], sample = DATA['RNA']),
         expand(RESULT_DIR + '/{sample}/{runid}_{sample}_DNA.done',runid = config['RUNID'],sample = DATA['DNA']),
-        expand(RESULT_DIR + '/{sample}/{runid}_{sample}_RNA.done',runid = config['RUNID'],sample = DATA['RNA'])
+        expand(RESULT_DIR + '/{sample}/{runid}_{sample}_RNA.done',runid = config['RUNID'],sample = DATA['RNA']),
+        expand(RESULT_DIR + '/{sample}/Results/{sample}_{runid}.failGenes',runid = config['RUNID'],sample = DATA['DNA']),
+        expand(RESULT_DIR + '/{sample}/Results/{sample}_{runid}.hotspot.depth',runid = config['RUNID'],sample = DATA['DNA'])
 rule sampleSheet:
     input:
         sampleSheet = RUN_DIR + '/{runid}/SampleSheet.csv'
@@ -112,7 +118,6 @@ rule demuxStats:
     shell:
         '''
         {PIPELINE}/scripts/demux_summary.pl --runid {input.html1} --html {output.html} --csv {output.csv}
-        #mutt command
         '''
 
 rule sampleFolders:
@@ -152,7 +157,6 @@ rule launchDNA_App:
     shell:
         '''
          {PIPELINE}/scripts/TSO500_app.sh {params.dir} {params.DNA_app} {params.out_dir} {params.ref}
-         
         '''
 
 rule LaunchRNA_App:
@@ -174,3 +178,29 @@ rule LaunchRNA_App:
 
         '''
 
+rule DNA_QC:
+    input:
+         out = RESULT_DIR + '/{sample}/{runid}_{sample}_DNA.done'
+    output:
+        gene = RESULT_DIR + '/{sample}/Results/{sample}_{runid}.failGenes',
+	hotspot_depth = RESULT_DIR + '/{sample}/Results/{sample}_{runid}.hotspot.depth'
+    params:
+        rulename = 'DNA_QC.{sample}',
+        bam = RESULT_DIR + '/{sample}/Logs_Intermediates/StitchedReads/{sample}/{sample}.stitched.bam',
+        resources = config['DNA_QC'],
+        bed = config['TSO500_reference'] + '/TST500C_manifest.bed',
+	dir = RESULT_DIR + '/{sample}/Results',
+        runid = config['RUNID'],
+        script = PIPELINE + '/scripts',
+        hotspot = config['hotspot_bed'],
+        size = config['genome_size'],
+    shell:
+        '''
+
+	{PIPELINE}/scripts/TSO500_QC.sh {params.dir} {params.bam} {params.bed}  {params.script} {params.runid} {params.hotspot} {params.size} 
+        
+        '''
+
+
+
+ 
