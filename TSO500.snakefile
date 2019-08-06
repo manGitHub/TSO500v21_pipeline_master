@@ -64,6 +64,8 @@ rule all:
         expand(DEMUX_DIR + '/TSO500_Demux/{runid}_{data}/Reports/{runid}_{data}.{ext}', runid = config['RUNID'], data = DATA.keys(), ext = ['html', 'csv']),
         expand(DEMUX_DIR + '/TSO500_Demux/{runid}_DNA/{sample}/SampleSheet.csv', runid = config['RUNID'], sample = DATA['DNA']),
         expand(DEMUX_DIR + '/TSO500_Demux/{runid}_RNA/{sample}/SampleSheet.csv', runid = config['RUNID'], sample = DATA['RNA']),
+        expand(DEMUX_DIR + '/TSO500_Demux/{runid}_DNA/{sample}.cleanup.done', runid = config['RUNID'], sample = DATA['DNA']),
+        expand(DEMUX_DIR + '/TSO500_Demux/{runid}_RNA/{sample}.cleanup.done', runid = config['RUNID'], sample = DATA['RNA']),
         expand(RESULT_DIR + '/{sample}/{runid}_{sample}_DNA.done',runid = config['RUNID'],sample = DATA['DNA']),
         expand(RESULT_DIR + '/{sample}/{runid}_{sample}_RNA.done',runid = config['RUNID'],sample = DATA['RNA']),
         expand(RESULT_DIR + '/{sample}/Results/{sample}_{runid}.failGenes',runid = config['RUNID'],sample = DATA['DNA']),
@@ -142,6 +144,21 @@ rule sampleFolders:
         {PIPELINE}/scripts/sampleSheet.py {input.sampleSheet} {output[0]} {wildcards.sample}
         for fastq in `find $DEMUX_DIR/TSO500_Demux/{wildcards.runid}_{wildcards.data}/ -maxdepth 1 -name "{wildcards.sample}_*.fastq.gz"`;do ln -s $fastq $DEMUX_DIR/TSO500_Demux/{wildcards.runid}_{wildcards.data}/{wildcards.sample}/.;done
         rsync -avzL $DEMUX_DIR/TSO500_Demux/{wildcards.runid}_{wildcards.data}/{wildcards.sample} $DEMUX_DIR/FastqFolder
+        '''
+
+rule cleanup:
+    input:
+        rules.sampleFolders.output[1]
+
+    output:
+        touch(DEMUX_DIR + '/TSO500_Demux/{runid}_{data,\w{3}}/{sample}.cleanup.done')
+
+    params:
+        rulename = 'cleanup.{runid}.{data}.{sample}',
+        resources = config['sampleFolders']
+       
+    shell:
+        '''
         find $DEMUX_DIR/TSO500_Demux/{wildcards.runid}_{wildcards.data}/ -maxdepth 1 -name "{wildcards.sample}_*.fastq.gz" -exec rm {{}} \;
         '''
 
