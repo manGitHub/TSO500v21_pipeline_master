@@ -32,9 +32,11 @@ with open(samplesheet, 'rt') as S:
     for L in lines2:
         if L.find('PoolRNA') != -1:
             lines3 = L.split(',')
+            lines3[0] = lines3[0].strip()
             DATA['RNA'].append(lines3[0])
         if L.find('PoolDNA') != -1:
             lines3 = L.split(',')
+            lines3[0] = lines3[0].strip()
             DATA['DNA'].append(lines3[0])
 
 
@@ -66,6 +68,7 @@ rule all:
         expand(RESULT_DIR + '/{sample}/{runid}_{sample}_RNA.done',runid = config['RUNID'],sample = DATA['RNA']),
         expand(RESULT_DIR + '/{sample}/Results/{sample}_{runid}.failGenes',runid = config['RUNID'],sample = DATA['DNA']),
         expand(RESULT_DIR + '/{sample}/Results/{sample}_{runid}.hotspot.depth',runid = config['RUNID'],sample = DATA['DNA'])
+
 rule sampleSheet:
     input:
         sampleSheet = RUN_DIR + '/{runid}/SampleSheet.csv'
@@ -139,7 +142,8 @@ rule sampleFolders:
         {PIPELINE}/scripts/sampleSheet.py {input.sampleSheet} {output[0]} {wildcards.sample}
         for fastq in `find $DEMUX_DIR/TSO500_Demux/{wildcards.runid}_{wildcards.data}/ -maxdepth 1 -name "{wildcards.sample}_*.fastq.gz"`;do ln -s $fastq $DEMUX_DIR/TSO500_Demux/{wildcards.runid}_{wildcards.data}/{wildcards.sample}/.;done
         rsync -avzL $DEMUX_DIR/TSO500_Demux/{wildcards.runid}_{wildcards.data}/{wildcards.sample} $DEMUX_DIR/FastqFolder
-        ''' 
+        find $DEMUX_DIR/TSO500_Demux/{wildcards.runid}_{wildcards.data}/ -maxdepth 1 -name "{wildcards.sample}_*.fastq.gz" -exec rm {{}} \;
+        '''
 
 rule launchDNA_App:
     input:
