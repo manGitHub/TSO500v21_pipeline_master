@@ -39,19 +39,38 @@ with open(samplesheet, 'rt') as S:
 
 
 #pp(DATA)
-#pp(DATA.keys())
-
+#KEY=(DATA.keys())
+#pp(key)
 runid = config['RUNID']
 MAIL=config['mail']
 TSO500=config['TSO500_version']
 TSO170=config['TSO170_version']
-FILE= expand(DEMUX_DIR + '/TSO500_Demux/{runid}_{data}/Reports/{runid}_{data}.html',runid = config['RUNID'],data = DATA.keys())
+DEMUX_STATS= expand(DEMUX_DIR + '/TSO500_Demux/{runid}_{data}/Reports/{runid}_{data}.html',runid = config['RUNID'],data = DATA.keys())
+#DNA_MERGE_QC=expand(RESULT_DIR + '/run_qc/DNA_QC_{runid}.xlsx',runid = config['RUNID'])
+#RNA_MERGE_QC=expand(RESULT_DIR + '/run_qc/RNA_QC_{runid}.xlsx',runid = config['RUNID'])
+TMB_MSI_MERGE=expand(RESULT_DIR + '/run_qc/TMB_MSI_{runid}.xlsx',runid = config['RUNID'])
+QC_STAT=touch(expand(RESULT_DIR + '/run_qc/{data}_QC_{runid}.xlsx',runid = config['RUNID'],data = DATA.keys()))
+
+DNA_QC_PATH= expand(RESULT_DIR + '/{sample}/Results/MetricsReport.tsv',sample=DATA['DNA'])
+#pp(DNA_QC_PATH)
+
+
+RNA_QC_PATH=expand(RESULT_DIR + '/{sample}/TruSightTumor170_Analysis*/RNA_SampleMetricsReport.txt',sample=DATA['RNA'])
+#pp(RNA_QC_PATH)
+
+TMB_MSI= expand(RESULT_DIR + '/{sample}/Results/{sample}_BiomarkerReport.txt',sample=DATA['DNA'])
+#pp(TMB_MSI)
+
+
 onstart:
     print('Started workflow')
     shell("echo 'TSO500 pipeline {VERSION} started  on run: {runid}' | mutt -s 'TSO500 Pipeline: {runid}'  {MAIL} ")
 onsuccess:
+    shell(" {PIPELINE}/scripts/RNA_QC.sh RNA_QC_{runid}.xlsx {RESULT_DIR}/run_qc/ {RNA_QC_PATH} ")  
+    shell(" {PIPELINE}/scripts/DNA_qc.py DNA_QC_{runid}.xlsx {RESULT_DIR}/run_qc/ {DNA_QC_PATH} ")
+    shell(" {PIPELINE}/scripts/TMB_MSI.py TMB_MSI_{runid}.xlsx {RESULT_DIR}/run_qc/ {TMB_MSI} ")
     print('Workflow finished, no error')
-    shell("echo 'TSO500 pipeline {VERSION} with TSO500_app {TSO500} ,TSO170_app {TSO170} completed successfully  on run: {runid}' | mutt -s 'TSO500 Pipeline: {runid}' -a {FILE}  {MAIL} ")
+    shell("echo 'TSO500 pipeline {VERSION} with TSO500_app {TSO500} ,TSO170_app {TSO170} completed successfully  on run: {runid}' | mutt -s 'TSO500 Pipeline: {runid}' -a {DEMUX_STATS} {QC_STAT} {TMB_MSI_MERGE} {MAIL} ")
 
 onerror:
     print('An error occured')
@@ -65,14 +84,14 @@ rule all:
         expand(RESULT_DIR + '/{sample}/{runid}_{sample}_DNA.done',runid = config['RUNID'],sample = DATA['DNA']),
         expand(RESULT_DIR + '/{sample}/{runid}_{sample}_RNA.done',runid = config['RUNID'],sample = DATA['RNA']),
         expand(RESULT_DIR + '/{sample}/Results/{sample}_{runid}.failGenes',runid = config['RUNID'],sample = DATA['DNA']),
-        expand(RESULT_DIR + '/{sample}/Results/{sample}_{runid}.hotspot.depth',runid = config['RUNID'],sample = DATA['DNA'])
+        expand(RESULT_DIR + '/{sample}/Results/{sample}_{runid}.hotspot.depth',runid = config['RUNID'],sample = DATA['DNA']),
+
 rule sampleSheet:
     input:
         sampleSheet = RUN_DIR + '/{runid}/SampleSheet.csv'
 
     output:
         RUN_DIR + '/{runid}/SampleSheet_{data,\w{3}}.csv'
-	
     params:
         rulename = 'all.{runid}.{data}',
         resources = config['default']
@@ -109,8 +128,7 @@ rule demuxStats:
 
     output:
         html = DEMUX_DIR + '/TSO500_Demux/{runid}_{data,\w{3}}/Reports/{runid}_{data}.html',
-        csv = DEMUX_DIR + '/TSO500_Demux/{runid}_{data,\w{3}}/Reports/{runid}_{data}.csv'
-
+        csv = DEMUX_DIR + '/TSO500_Demux/{runid}_{data,\w{3}}/Reports/{runid}_{data}.csv',
     params:
         rulename = 'demuxStats.{runid}.{data}',
         resources = config['demuxStats']
@@ -127,8 +145,7 @@ rule sampleFolders:
 
     output:
         DEMUX_DIR + '/TSO500_Demux/{runid}_{data,\w{3}}/{sample}/SampleSheet.csv',
-        touch(DEMUX_DIR + '/FastqFolder/{sample}/rsync.{runid}_{data,\w{3}}.done')                #this file is created so that the wild cards can flow to next rule
- 
+        touch(DEMUX_DIR + '/FastqFolder/{sample}/rsync.{runid}_{data,\w{3}}.done'),                #this file is created so that the wild cards can flow to next rule
     params:
         rulename = 'sampleFolders.{runid}.{data}.{sample}',
         resources = config['sampleFolders']
@@ -139,6 +156,7 @@ rule sampleFolders:
         {PIPELINE}/scripts/sampleSheet.py {input.sampleSheet} {output[0]} {wildcards.sample}
         for fastq in `find $DEMUX_DIR/TSO500_Demux/{wildcards.runid}_{wildcards.data}/ -maxdepth 1 -name "{wildcards.sample}_*.fastq.gz"`;do ln -s $fastq $DEMUX_DIR/TSO500_Demux/{wildcards.runid}_{wildcards.data}/{wildcards.sample}/.;done
         rsync -avzL $DEMUX_DIR/TSO500_Demux/{wildcards.runid}_{wildcards.data}/{wildcards.sample} $DEMUX_DIR/FastqFolder
+        touch {RESULT_DIR}/run_qc/{runid}.done
         ''' 
 
 rule launchDNA_App:
@@ -183,7 +201,8 @@ rule DNA_QC:
          out = RESULT_DIR + '/{sample}/{runid}_{sample}_DNA.done'
     output:
         gene = RESULT_DIR + '/{sample}/Results/{sample}_{runid}.failGenes',
-	hotspot_depth = RESULT_DIR + '/{sample}/Results/{sample}_{runid}.hotspot.depth'
+	hotspot_depth = RESULT_DIR + '/{sample}/Results/{sample}_{runid}.hotspot.depth',
+#        touch(RESULT_DIR + '/run_qc/{runid}.done')        
     params:
         rulename = 'DNA_QC.{sample}',
         bam = RESULT_DIR + '/{sample}/Logs_Intermediates/StitchedReads/{sample}/{sample}.stitched.bam',
@@ -198,9 +217,34 @@ rule DNA_QC:
         '''
 
 	{PIPELINE}/scripts/TSO500_QC.sh {params.dir} {params.bam} {params.bed}  {params.script} {params.runid} {params.hotspot} {params.size} 
-        
         '''
 
 
 
+
+
+
+
+"""
+
+
+rule Merge_QC:
+     input:
+          RESULT_DIR + '/{sample}/{runid}_{sample}_{data,\w{3}}.done'
+     output:
+         dynamic(RESULT_DIR + '/run_qc/DNA_QC_{runid}.xlsx'),
+         dynamic(RESULT_DIR + '/run_qc/RNA_QC_{runid}.xlsx')
+     params:
+         rulename = 'Merge_QC.{runid}',
+         resources = config['DNA_QC'],
+         dir = RESULT_DIR + '/run_qc/'
+     shell:
+         '''
  
+        {PIPELINE}/scripts/DNA_qc.py DNA_QC_{runid}.xlsx {params.dir} {DNA_QC_PATH}   
+        
+        {PIPELINE}/scripts/RNA_qc.py RNA_QC_{runid}.xlsx {params.dir} {RNA_QC_PATH}
+         '''
+
+
+"""

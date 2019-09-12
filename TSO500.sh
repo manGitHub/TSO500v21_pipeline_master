@@ -18,8 +18,6 @@ DEMUX_DIR=/data/Compass/DATA/NextSeq
 RESULT_DIR=/data/Compass/Analysis/ProcessedResults_NexSeq
 PIPELINE_HOME=/data/Compass/Tools/TSO500_pipeline
 APP_DIR=/data/Compass/Tools
-dryrun=
-runid=
 
 while [ "$1" != "" ]; do
     case $1 in
@@ -85,5 +83,7 @@ else
         chgrp -f Compass logs
         chmod g+rwx logs
     fi
-    sbatch -e pipeline.%j.%x.e -o pipeline.%j.%x.o --job-name=TSO500.$runid.$DATE --mem=1G --partition=ccr,norm --time=10:00:00 --cpus-per-task=1 $PIPELINE_HOME/submit.sh	
+    sbatch -e pipeline.%j.%x.e -o pipeline.%j.%x.o --job-name=TSO500.$runid.$DATE --mem=1G --partition=ccr,norm --time=20:00:00 --cpus-per-task=1 $PIPELINE_HOME/submit.sh	
 fi
+
+
