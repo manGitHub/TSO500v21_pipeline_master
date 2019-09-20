@@ -88,11 +88,7 @@ rule all:
         expand(RESULT_DIR + '/{sample}/{runid}_{sample}_DNA.done',runid = config['RUNID'],sample = DATA['DNA']),
         expand(RESULT_DIR + '/{sample}/{runid}_{sample}_RNA.done',runid = config['RUNID'],sample = DATA['RNA']),
         expand(RESULT_DIR + '/{sample}/Results/{sample}_{runid}.failGenes',runid = config['RUNID'],sample = DATA['DNA']),
-<<<<<<< HEAD
         expand(RESULT_DIR + '/{sample}/Results/{sample}_{runid}.hotspot.depth',runid = config['RUNID'],sample = DATA['DNA'])
-=======
-        expand(RESULT_DIR + '/{sample}/Results/{sample}_{runid}.hotspot.depth',runid = config['RUNID'],sample = DATA['DNA']),
->>>>>>> qc_metrics
 
 rule sampleSheet:
     input:
@@ -164,7 +160,6 @@ rule sampleFolders:
         {PIPELINE}/scripts/sampleSheet.py {input.sampleSheet} {output[0]} {wildcards.sample}
         for fastq in `find $DEMUX_DIR/TSO500_Demux/{wildcards.runid}_{wildcards.data}/ -maxdepth 1 -name "{wildcards.sample}_*.fastq.gz"`;do ln -s $fastq $DEMUX_DIR/TSO500_Demux/{wildcards.runid}_{wildcards.data}/{wildcards.sample}/.;done
         rsync -avzL $DEMUX_DIR/TSO500_Demux/{wildcards.runid}_{wildcards.data}/{wildcards.sample} $DEMUX_DIR/FastqFolder
-<<<<<<< HEAD
         '''
 
 rule cleanup:
@@ -182,10 +177,6 @@ rule cleanup:
         '''
         find $DEMUX_DIR/TSO500_Demux/{wildcards.runid}_{wildcards.data}/ -maxdepth 1 -name "{wildcards.sample}_*.fastq.gz" -exec rm {{}} \;
         '''
-=======
-        touch {RESULT_DIR}/run_qc/{runid}.done
-        ''' 
->>>>>>> qc_metrics
 
 rule launchDNA_App:
     input:
@@ -253,26 +244,3 @@ rule DNA_QC:
 
 
 
-"""
-
-
-rule Merge_QC:
-     input:
-          RESULT_DIR + '/{sample}/{runid}_{sample}_{data,\w{3}}.done'
-     output:
-         dynamic(RESULT_DIR + '/run_qc/DNA_QC_{runid}.xlsx'),
-         dynamic(RESULT_DIR + '/run_qc/RNA_QC_{runid}.xlsx')
-     params:
-         rulename = 'Merge_QC.{runid}',
-         resources = config['DNA_QC'],
-         dir = RESULT_DIR + '/run_qc/'
-     shell:
-         '''
- 
-        {PIPELINE}/scripts/DNA_qc.py DNA_QC_{runid}.xlsx {params.dir} {DNA_QC_PATH}   
-        
-        {PIPELINE}/scripts/RNA_qc.py RNA_QC_{runid}.xlsx {params.dir} {RNA_QC_PATH}
-         '''
-
-
-"""

@@ -19,9 +19,7 @@ file = sys.argv[1]
 #print file    #output_file_name
 
 df = pd.concat([pd.read_csv(f,delimiter='\t',skiprows =9,skipfooter=3,engine='python') for f in mypath], axis=1)
-#df = df.loc[:,~df.columns.duplicated()]  # to remove all the duplicated columns by column name
 df = df.T.drop_duplicates().T   # to remove duplicated columns by column contents
-#print df
 
 df.to_excel(qc + file,index=False,header=False,sheet_name="Run_metrics")
 
