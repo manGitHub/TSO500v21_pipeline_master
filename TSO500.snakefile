@@ -2,6 +2,8 @@ from pprint import pprint as pp
 from collections import defaultdict
 import glob
 import os
+import pandas as pd
+import numpy as np
 
 PIPELINE = os.environ['PIPELINE_HOME']
 RUN_DIR = os.environ['RUN_DIR']
@@ -14,16 +16,12 @@ RESULT_DIR = os.environ['RESULT_DIR']
 DATA = defaultdict(list)
 
 F = config['RUNID'].split('_')
-#print('RUNID:', F)
 flowcell = ''
 for f in F:
     if re.match('^\d{4}$', f):
         flowcell = re.sub('^\w', '', F[F.index(f) + 1])
 
-#print(flowcell)
-
 samplesheet = RUN_DIR + '/' + config['RUNID'] + '/SampleSheet.csv'
-#print('sample_sheet path', samplesheet)
 
 with open(samplesheet, 'rt') as S:
     text = S.read()
@@ -40,7 +38,61 @@ with open(samplesheet, 'rt') as S:
             DATA['DNA'].append(lines3[0])
 
 
-#pp(DATA)
+lines3 = []
+PAIRDR = dict()
+PAIRRD = dict()
+UNPAIRR = []
+VCFdone_temp = []
+VCFdone = []
+with open(samplesheet, 'rt') as IN:
+    text = IN.read()
+    lines = text.split('[Data]')
+    lines2 = lines[1].split('\n')
+    header = lines2[1].split(',')
+    lines2 = lines2[2:]
+    for L in lines2:
+        lines3.append(L.split(','))
+
+    df = pd.DataFrame(lines3, columns = header)
+    df.dropna(axis = 0, how = 'all', thresh = 10, inplace = True)
+    #pp(df)
+    df1 = df.loc[(df['Manifest'] == 'PoolDNA') & (df['Matched_RNA'] != 'PENDING'), ['Sample_ID', 'Matched_RNA']] 
+    #pp(df1)
+    PAIRDR = df1.set_index('Sample_ID').T.to_dict()
+    #pp(PAIRDR)
+    df2 = df.loc[df['Manifest'] == 'PoolRNA', ['Matched_DNA']]
+    
+    df3 = df2.isin(PAIRDR.keys())
+    #pp(df3)
+    other = df3[df3['Matched_DNA'] == False]
+    if not other.empty:
+        df4 = df.loc[other.index.tolist()]
+        df5 = df4.loc[df4['Matched_DNA'] != 'NA', ['Sample_ID', 'Matched_DNA']] #The NA here implies unpaired RNA.
+        #pp(df4)
+        #pp(df5)
+        PAIRRD = df5.set_index('Sample_ID').T.to_dict()
+        #pp(PAIRRD)
+        df6 = df4.loc[df4['Matched_DNA'] == 'NA', ['Sample_ID']]
+        UNPAIRR = df6['Sample_ID'].values.tolist()
+        #pp(UNPAIRR) 
+        
+VCFdone_temp = ['{rdir}/{dna}/Results/{dna}_{rna}.{runid}.merge_vcf.done'.format(rdir = RESULT_DIR, rna = PAIRDR[sample]['Matched_RNA'], dna = sample, runid = config['RUNID']) for sample in PAIRDR.keys()]
+VCFdone = [t.replace('_NA', '') for t in VCFdone_temp]
+
+DNA_VCF = dict()
+if PAIRRD:
+    for sample in PAIRRD.keys():
+        VCFdone += ['{rdir}/{rna}/Results/{rna}.{runid}.merge_vcf_2runs.done'.format(rdir = RESULT_DIR, rna = sample, runid = config['RUNID'])]
+        DNA_VCF[sample] = ['{rdir}/{dna}/Logs_Intermediates/SmallVariantFilter/{dna}/{dna}_SmallVariants.genome.vcf'.format(rdir = RESULT_DIR, dna = PAIRRD[sample]['Matched_DNA'])]
+
+if UNPAIRR:
+    VCFdone += ['{rdir}/{rna}/Results/{rna}.{runid}.merge_vcf_RNAonly.done'.format(rdir = RESULT_DIR, rna = sample, runid = config['RUNID']) for sample in UNPAIRR]
+
+#pp(VCFdone)
+#pp(DNA_VCF)
+
+    
+pp(DATA)
 #KEY=(DATA.keys())
 #pp(key)
 runid = config['RUNID']
@@ -67,16 +119,40 @@ TMB_MSI= expand(RESULT_DIR + '/{sample}/Results/{sample}_BiomarkerReport.txt',sa
 onstart:
     print('Started workflow')
     shell("echo 'TSO500 pipeline {VERSION} started  on run: {runid}' | mutt -s 'TSO500 Pipeline: {runid}'  {MAIL} ")
+
 onsuccess:
     shell(" {PIPELINE}/scripts/RNA_QC.sh RNA_QC_{runid}.xlsx {RESULT_DIR}/run_qc/ {RNA_QC_PATH} ")  
     shell(" {PIPELINE}/scripts/DNA_qc.py DNA_QC_{runid}.xlsx {RESULT_DIR}/run_qc/ {DNA_QC_PATH} ")
     shell(" {PIPELINE}/scripts/TMB_MSI.py TMB_MSI_{runid}.xlsx {RESULT_DIR}/run_qc/ {TMB_MSI} ")
     print('Workflow finished, no error')
+    for sample in DATA.values():
+        shell("find {RESULT_DIR}/{sample}/ -group $USER -exec chgrp -f {GROUP} {{}} \;")
+        shell("find {RESULT_DIR}/{sample}/ \( -type f -user $USER -exec chmod g+rw {{}} \; \) , \( -type d -user $USER -exec chmod g+rwx {{}} \; \)")
+    shell("find {RESULT_DIR}/run_qc -group $USER -exec chgrp -f {GROUP} {{}} \;")
+    shell("find {RESULT_DIR}/run_qc \( -type f -user $USER -exec chmod g+rw {{}} \; \) , \( -type d -user $USER -exec chmod g+rwx {{}} \; \)")
+    shell("find {RUN_DIR}/{runid} -maxdepth 1 -type f -group $USER -name  \"SampleSheet_*.csv\" -exec chgrp -f {GROUP} {{}} \;")
+    shell("find {RUN_DIR}/{runid} -maxdepth 1 -type f -user $USER -name  \"SampleSheet_*.csv\" -exec chmod g+rw {{}} \;")
+    shell("find {DEMUX_DIR}/TSO500_Demux/{runid}_* -group $USER -exec chgrp -f {GROUP} {{}} \;")
+    shell("find {DEMUX_DIR}/TSO500_Demux/{runid}_* \( -type f -user $USER -exec chmod g+rw {{}} \; \) , \( -type d -user $USER -exec chmod g+rwx {{}} \; \)")
     shell("echo 'TSO500 pipeline {VERSION} with TSO500_app {TSO500} ,TSO170_app {TSO170} completed successfully  on run: {runid}' | mutt -s 'TSO500 Pipeline: {runid}' -a {DEMUX_STATS} {QC_STAT} {TMB_MSI_MERGE} {MAIL} ")
+    shell("find .snakemake/ logs {runid}.yaml -group $USER -exec chgrp -f {GROUP} {{}} \;")
+    shell("find .snakemake/ logs {runid}.yaml \( -type f -user $USER -exec chmod g+rw {{}} \; \) , \( -type d -user $USER -exec chmod g+rwx {{}} \; \)")
 
 onerror:
     print('An error occured')
+    for data in DATA.values():
+        shell("find {RESULT_DIR}/{sample}/ -group $USER -exec chgrp -f {GROUP} {{}} \;")
+        shell("find {RESULT_DIR}/{sample}/ \( -type f -user $USER -exec chmod g+rw {{}} \; \) , \( -type d -user $USER -exec chmod g+rwx {{}} \; \)")
+    shell("find {RESULT_DIR}/run_qc -group $USER -exec chgrp -f {GROUP} {{}} \;")
+    shell("find {RESULT_DIR}/run_qc \( -type f -user $USER -exec chmod g+rw {{}} \; \) , \( -type d -user $USER -exec chmod g+rwx {{}} \; \)")
+    shell("find {RUN_DIR}/{runid} -maxdepth 1 -type f -group $USER -name  \"SampleSheet_*.csv\" -exec chgrp -f {GROUP} {{}} \;")
+    shell("find {RUN_DIR}/{runid} -maxdepth 1 -type f -user $USER -name  \"SampleSheet_*.csv\" -exec chmod g+rw {{}} \;")
+    shell("find {DEMUX_DIR}/TSO500_Demux/{runid}_* -group $USER -exec chgrp -f {GROUP} {{}} \;")
+    shell("find {DEMUX_DIR}/TSO500_Demux/{runid}_* \( -type f -user $USER -exec chmod g+rw {{}} \; \) , \( -type d -user $USER -exec chmod g+rwx {{}} \; \)")
     shell("echo 'TSO500 pipeline {VERSION} error occurred  on run: {runid}' | mutt  -s 'TSO500 Pipeline: {runid}' {MAIL} ")
+    shell("find .snakemake/ logs {runid}.yaml \( -type f -user $USER -exec chmod g+rw {{}} \; \) , \( -type d -user $USER -exec chmod g+rwx {{}} \; \)")
+    shell("find .snakemake/ logs {runid}.yaml -group $USER -exec chgrp -f {GROUP} {{}} \;")
+
 
 rule all:
     input: 
@@ -88,7 +164,8 @@ rule all:
         expand(RESULT_DIR + '/{sample}/{runid}_{sample}_DNA.done',runid = config['RUNID'],sample = DATA['DNA']),
         expand(RESULT_DIR + '/{sample}/{runid}_{sample}_RNA.done',runid = config['RUNID'],sample = DATA['RNA']),
         expand(RESULT_DIR + '/{sample}/Results/{sample}_{runid}.failGenes',runid = config['RUNID'],sample = DATA['DNA']),
-        expand(RESULT_DIR + '/{sample}/Results/{sample}_{runid}.hotspot.depth',runid = config['RUNID'],sample = DATA['DNA'])
+        expand(RESULT_DIR + '/{sample}/Results/{sample}_{runid}.hotspot.depth',runid = config['RUNID'],sample = DATA['DNA']),
+        VCFdone
 
 rule sampleSheet:
     input:
@@ -122,7 +199,6 @@ rule bcl2fastq:
     shell:
         '''
         module load bcl2fastq/2.20.0
-#check if bcl2fastq will complain if folder exists
         bcl2fastq --runfolder-dir {params.run} --output-dir {params.bclout} --interop-dir {params.bclout}/InterOp --sample-sheet {input.sampleSheet} --loading-threads 16 --processing-threads 16 --writing-threads 16 
         '''
 
@@ -158,7 +234,7 @@ rule sampleFolders:
         '''
         module load python/3.6
         {PIPELINE}/scripts/sampleSheet.py {input.sampleSheet} {output[0]} {wildcards.sample}
-        for fastq in `find $DEMUX_DIR/TSO500_Demux/{wildcards.runid}_{wildcards.data}/ -maxdepth 1 -name "{wildcards.sample}_*.fastq.gz"`;do ln -s $fastq $DEMUX_DIR/TSO500_Demux/{wildcards.runid}_{wildcards.data}/{wildcards.sample}/.;done
+        for fastq in `find $DEMUX_DIR/TSO500_Demux/{wildcards.runid}_{wildcards.data}/ -maxdepth 1 -name "{wildcards.sample}_*.fastq.gz"`;do ln -sf $fastq $DEMUX_DIR/TSO500_Demux/{wildcards.runid}_{wildcards.data}/{wildcards.sample}/.;done
         rsync -avzL $DEMUX_DIR/TSO500_Demux/{wildcards.runid}_{wildcards.data}/{wildcards.sample} $DEMUX_DIR/FastqFolder
         '''
 
@@ -183,7 +259,7 @@ rule launchDNA_App:
          out = DEMUX_DIR + '/FastqFolder/{sample}/rsync.{runid}_DNA.done'
     output:
 #       RESULT_DIR + '/{sample}/Results/MetricsReport.tsv',
-       touch(RESULT_DIR + '/{sample}/{runid}_{sample}_DNA.done')
+        touch(RESULT_DIR + '/{sample}/{runid}_{sample}_DNA.done'),
     params:
         rulename = 'launchDNA_App.{sample}',
         resources = config['app'],
@@ -196,7 +272,7 @@ rule launchDNA_App:
          {PIPELINE}/scripts/TSO500_app.sh {params.dir} {params.DNA_app} {params.out_dir} {params.ref}
         '''
 
-rule LaunchRNA_App:
+rule launchRNA_App:
     input:
          out = DEMUX_DIR + '/FastqFolder/{sample}/rsync.{runid}_RNA.done'
     output:
@@ -238,9 +314,92 @@ rule DNA_QC:
 	{PIPELINE}/scripts/TSO500_QC.sh {params.dir} {params.bam} {params.bed}  {params.script} {params.runid} {params.hotspot} {params.size} 
         '''
 
+rule merge_VCF_paired:
+    input:
+        RESULT_DIR + '/{dna}/{runid}_{dna}_DNA.done',
+        RESULT_DIR + '/{rna}/{runid}_{rna}_RNA.done'
+    output:
+        touch(RESULT_DIR + '/{dna}/Results/{dna}_{rna}.{runid}.merge_vcf.done')
+    params:
+        rulename = 'merge_VCF_paired.{dna}_{rna}',
+        resources = config['merge_VCF']
+    shell:
+        '''
+        module load python/3.7
+        module load blat/3.5
+        module load seqtk/1.3
+        #delete any preexisting fusion_contigs.fa, etc
+        cd {RESULT_DIR}/{wildcards.dna}/Results/
+        if [ -f fusion_contigs.fa ]; then rm -f fusion_contigs.fa; fi
+        if [ -f fusion_ref_pos.bed ]; then rm -f fusion_ref_pos.bed; fi
+        if [ -f fusion_contigs.psl ]; then rm -f fusion_contigs.psl; fi    
+        {PIPELINE}/scripts/merge_vcfs.py {RESULT_DIR}/{wildcards.dna}/Logs_Intermediates/SmallVariantFilter/{wildcards.dna}/{wildcards.dna}_SmallVariants.genome.vcf {RESULT_DIR}/{wildcards.rna}/TruSightTumor170_Analysis_*/RNA_{wildcards.rna}/{wildcards.rna}_SpliceVariants.vcf {RESULT_DIR}/{wildcards.rna}/TruSightTumor170_Analysis_*/RNA_{wildcards.rna}/{wildcards.rna}_Fusions.csv {RESULT_DIR}/{wildcards.dna}/Results/{wildcards.dna}_{wildcards.rna}.merged.vcf
+        gzip -f {RESULT_DIR}/{wildcards.dna}/Results/{wildcards.dna}_{wildcards.rna}.merged.vcf
+        ''' 
 
+rule merge_VCF_dna:
+    input:
+        rules.launchDNA_App.output
+        #RESULT_DIR + '/{sample}/{runid}_{sample}_DNA.done'
+    output:
+        touch(RESULT_DIR + '/{sample}/Results/{sample}.{runid}.merge_vcf.done')
+    params:
+        rulename = 'merge_VCF_dna.{sample}',
+        resources = config['merge_VCF']
+    shell:
+        '''
+        module load python/3.7
+        module load blat/3.5
+        module load seqtk/1.3
+        {PIPELINE}/scripts/merge_vcfs.py {RESULT_DIR}/{wildcards.sample}/Logs_Intermediates/SmallVariantFilter/{wildcards.sample}/{wildcards.sample}_SmallVariants.genome.vcf NULL NULL {RESULT_DIR}/{wildcards.sample}/Results/{wildcards.sample}.merged.vcf
+        gzip -f {RESULT_DIR}/{wildcards.sample}/Results/{wildcards.sample}.merged.vcf
+        '''
 
+rule merge_VCF_paired_separate_runs:
+    input:
+        #rna_done = RESULT_DIR + '/{rna}/{runid}_{rna}_RNA.done',
+        rna_done = rules.launchRNA_App.output,
+        dna_vcf = lambda wildcards: DNA_VCF[wildcards.sample]
+    output:
+        touch(RESULT_DIR + '/{sample}/Results/{sample}.{runid}.merge_vcf_2runs.done')
+    params:
+        rulename = 'merge_VCF_paired_separate_runs.{sample}',
+        resources = config['merge_VCF'],
+        dna = lambda wildcards: PAIRRD[wildcards.sample]['Matched_DNA']
+    shell:
+        '''
+        module load python/3.7
+        module load blat/3.5
+        module load seqtk/1.3
+        #delete any preexisting fusion_contigs.fa, etc
+        cd {RESULT_DIR}/{params.dna}/Results/
+        if [ -f fusion_contigs.fa ]; then rm -f fusion_contigs.fa; fi
+        if [ -f fusion_ref_pos.bed ]; then rm -f fusion_ref_pos.bed; fi
+        if [ -f fusion_contigs.psl ]; then rm -f fusion_contigs.psl; fi    
+        {PIPELINE}/scripts/merge_vcfs.py {input.dna_vcf} {RESULT_DIR}/{wildcards.sample}/TruSightTumor170_Analysis_*/RNA_{wildcards.sample}/{wildcards.sample}_SpliceVariants.vcf {RESULT_DIR}/{wildcards.sample}/TruSightTumor170_Analysis_*/RNA_{wildcards.sample}/{wildcards.sample}_Fusions.csv {RESULT_DIR}/{params.dna}/Results/{params.dna}_{wildcards.sample}.merged.vcf
+        gzip -f {RESULT_DIR}/{params.dna}/Results/{params.dna}_{wildcards.sample}.merged.vcf
+        touch {RESULT_DIR}/{params.dna}/Results/{params.dna}_{wildcards.sample}.merge_vcf.done
+        '''
 
-
-
-
+rule merge_VCF_rna:
+    input:
+        rules.launchRNA_App.output
+        #RESULT_DIR + '/{sample}/{runid}_{sample}_RNA.done'
+    output:
+        touch(RESULT_DIR + '/{sample}/Results/{sample}.{runid}.merge_vcf_RNAonly.done')
+    params:
+        rulename = 'merge_VCF_rna.{sample}',
+        resources = config['merge_VCF']
+    shell:
+        '''
+        module load python/3.7
+        module load blat/3.5
+        module load seqtk/1.3
+        #delete any preexisting fusion_contigs.fa, etc
+        cd {RESULT_DIR}/{wildcards.sample}/Results/
+        if [ -f fusion_contigs.fa ]; then rm -f fusion_contigs.fa; fi
+        if [ -f fusion_ref_pos.bed ]; then rm -f fusion_ref_pos.bed; fi
+        if [ -f fusion_contigs.psl ]; then rm -f fusion_contigs.psl; fi    
+        {PIPELINE}/scripts/merge_vcfs.py NULL {RESULT_DIR}/{wildcards.sample}/TruSightTumor170_Analysis_*/RNA_{wildcards.sample}/{wildcards.sample}_SpliceVariants.vcf {RESULT_DIR}/{wildcards.sample}/TruSightTumor170_Analysis_*/RNA_{wildcards.sample}/{wildcards.sample}_Fusions.csv {RESULT_DIR}/{wildcards.sample}/Results/{wildcards.sample}.merged.vcf
+        gzip -f {RESULT_DIR}/{wildcards.sample}/Results/{wildcards.sample}.merged.vcf
+        '''
