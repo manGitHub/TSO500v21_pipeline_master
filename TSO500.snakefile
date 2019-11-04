@@ -115,6 +115,11 @@ RNA_QC_PATH=expand(RESULT_DIR + '/{sample}/TruSightTumor170_Analysis*/RNA_Sample
 TMB_MSI= expand(RESULT_DIR + '/{sample}/Results/{sample}_BiomarkerReport.txt',sample=DATA['DNA'])
 #pp(TMB_MSI)
 
+samples = []
+for sample in DATA.values():
+    for s in sample:
+        samples.append(s)
+pp(samples)
 
 onstart:
     print('Started workflow')
@@ -125,7 +130,7 @@ onsuccess:
     shell(" {PIPELINE}/scripts/DNA_qc.py DNA_QC_{runid}.xlsx {RESULT_DIR}/run_qc/ {DNA_QC_PATH} ")
     shell(" {PIPELINE}/scripts/TMB_MSI.py TMB_MSI_{runid}.xlsx {RESULT_DIR}/run_qc/ {TMB_MSI} ")
     print('Workflow finished, no error')
-    for sample in DATA.values():
+    for sample in samples:
         shell("find {RESULT_DIR}/{sample}/ -group $USER -exec chgrp -f {GROUP} {{}} \;")
         shell("find {RESULT_DIR}/{sample}/ \( -type f -user $USER -exec chmod g+rw {{}} \; \) , \( -type d -user $USER -exec chmod g+rwx {{}} \; \)")
     shell("find {RESULT_DIR}/run_qc -group $USER -exec chgrp -f {GROUP} {{}} \;")
@@ -140,7 +145,7 @@ onsuccess:
 
 onerror:
     print('An error occured')
-    for data in DATA.values():
+    for sample in samples:
         shell("find {RESULT_DIR}/{sample}/ -group $USER -exec chgrp -f {GROUP} {{}} \;")
         shell("find {RESULT_DIR}/{sample}/ \( -type f -user $USER -exec chmod g+rw {{}} \; \) , \( -type d -user $USER -exec chmod g+rwx {{}} \; \)")
     shell("find {RESULT_DIR}/run_qc -group $USER -exec chgrp -f {GROUP} {{}} \;")
