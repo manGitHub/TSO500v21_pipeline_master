@@ -105,12 +105,24 @@ DEMUX_STATS= expand(DEMUX_DIR + '/TSO500_Demux/{runid}_{data}/Reports/{runid}_{d
 TMB_MSI_MERGE=expand(RESULT_DIR + '/run_qc/TMB_MSI_{runid}.xlsx',runid = config['RUNID'])
 QC_STAT=touch(expand(RESULT_DIR + '/run_qc/{data}_QC_{runid}.xlsx',runid = config['RUNID'],data = DATA.keys()))
 
+runqc = RESULT_DIR + '/run_qc'
+
+if not os.path.exists(runqc):
+ os.makedirs(runqc)
+
 DNA_QC_PATH= expand(RESULT_DIR + '/{sample}/Results/MetricsReport.tsv',sample=DATA['DNA'])
 #pp(DNA_QC_PATH)
 
 
-RNA_QC_PATH=expand(RESULT_DIR + '/{sample}/TruSightTumor170_Analysis*/RNA_SampleMetricsReport.txt',sample=DATA['RNA'])
+#RNA_QC_PATH=expand(RESULT_DIR + '/{sample}/TruSightTumor170_Analysis*/RNA_SampleMetricsReport.txt',sample=DATA['RNA'])
 #pp(RNA_QC_PATH)
+
+
+if 'RNA' in DATA:
+ RNA_QC_PATH =expand(RESULT_DIR + '/{sample}/TruSightTumor170_Analysis*/RNA_SampleMetricsReport.txt',sample=DATA['RNA'])
+else:
+ RNA_QC_PATH = "None"
+
 
 TMB_MSI= expand(RESULT_DIR + '/{sample}/Results/{sample}_BiomarkerReport.txt',sample=DATA['DNA'])
 #pp(TMB_MSI)
@@ -126,7 +138,7 @@ onstart:
     shell("echo 'TSO500 pipeline {VERSION} started  on run: {runid}' | mutt -s 'TSO500 Pipeline: {runid}'  {MAIL} ")
 
 onsuccess:
-    shell(" {PIPELINE}/scripts/RNA_QC.sh RNA_QC_{runid}.xlsx {RESULT_DIR}/run_qc/ {RNA_QC_PATH} ")  
+    shell(" {PIPELINE}/scripts/RNA_qc.py RNA_QC_{runid}.xlsx {RESULT_DIR}/run_qc/ {RNA_QC_PATH} ")  
     shell(" {PIPELINE}/scripts/DNA_qc.py DNA_QC_{runid}.xlsx {RESULT_DIR}/run_qc/ {DNA_QC_PATH} ")
     shell(" {PIPELINE}/scripts/TMB_MSI.py TMB_MSI_{runid}.xlsx {RESULT_DIR}/run_qc/ {TMB_MSI} ")
     print('Workflow finished, no error')
