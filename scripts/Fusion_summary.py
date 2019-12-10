@@ -17,12 +17,15 @@ if (sys.argv[3])  == 'None' :
 else: 
     path = ','.join(sys.argv[3:])
     mypath =path.split(",")
-    print mypath
-    qc= sys.argv[2]
+#    print mypath
+    fusionpath= sys.argv[2]
     file = sys.argv[1]
+    df = pd.concat([pd.read_csv(f,delimiter='\t',skiprows=9) for f in mypath])
+    df = df[df['Summary'].str.contains("Failed at Fusion", na = False)]
+#print(df)
 
-    df = pd.concat([pd.read_csv(f,delimiter='\t',skiprows=7) for f in mypath])
-
-
-    df.to_excel(qc + file,index=False,sheet_name="Run_metrics")
+    if df.empty:
+       print('No fusion failure')
+    else:
+       df.to_csv(fusionpath + file, header=None, index=None)
 

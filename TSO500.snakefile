@@ -105,12 +105,25 @@ DEMUX_STATS= expand(DEMUX_DIR + '/TSO500_Demux/{runid}_{data}/Reports/{runid}_{d
 TMB_MSI_MERGE=expand(RESULT_DIR + '/run_qc/TMB_MSI_{runid}.xlsx',runid = config['RUNID'])
 QC_STAT=touch(expand(RESULT_DIR + '/run_qc/{data}_QC_{runid}.xlsx',runid = config['RUNID'],data = DATA.keys()))
 
+runqc = RESULT_DIR + '/run_qc'
+
+if not os.path.exists(runqc):
+ os.makedirs(runqc)
+
 DNA_QC_PATH= expand(RESULT_DIR + '/{sample}/Results/MetricsReport.tsv',sample=DATA['DNA'])
 #pp(DNA_QC_PATH)
 
 
-RNA_QC_PATH=expand(RESULT_DIR + '/{sample}/TruSightTumor170_Analysis*/RNA_SampleMetricsReport.txt',sample=DATA['RNA'])
+#RNA_QC_PATH=expand(RESULT_DIR + '/{sample}/TruSightTumor170_Analysis*/RNA_SampleMetricsReport.txt',sample=DATA['RNA'])
 #pp(RNA_QC_PATH)
+
+
+if 'RNA' in DATA:
+ RNA_QC_PATH =expand(RESULT_DIR + '/{sample}/TruSightTumor170_Analysis*/RNA_SampleMetricsReport.txt',sample=DATA['RNA'])
+ RNA_summary =expand(RESULT_DIR + '/{sample}/TruSightTumor170_Analysis*/Summary.tsv',sample=DATA['RNA'])
+else:
+ RNA_QC_PATH = "None"
+ RNA_summary = "None"
 
 TMB_MSI= expand(RESULT_DIR + '/{sample}/Results/{sample}_BiomarkerReport.txt',sample=DATA['DNA'])
 #pp(TMB_MSI)
@@ -126,7 +139,8 @@ onstart:
     shell("echo 'TSO500 pipeline {VERSION} started  on run: {runid}' | mutt -s 'TSO500 Pipeline: {runid}'  {MAIL} ")
 
 onsuccess:
-    shell(" {PIPELINE}/scripts/RNA_QC.sh RNA_QC_{runid}.xlsx {RESULT_DIR}/run_qc/ {RNA_QC_PATH} ")  
+    shell(" {PIPELINE}/scripts/Fusion_summary.py Fusion_error_{runid}.txt {RESULT_DIR}/run_qc/ {RNA_summary} ")
+    shell(" {PIPELINE}/scripts/RNA_qc.py RNA_QC_{runid}.xlsx {RESULT_DIR}/run_qc/ {RNA_QC_PATH} ")  
     shell(" {PIPELINE}/scripts/DNA_qc.py DNA_QC_{runid}.xlsx {RESULT_DIR}/run_qc/ {DNA_QC_PATH} ")
     shell(" {PIPELINE}/scripts/TMB_MSI.py TMB_MSI_{runid}.xlsx {RESULT_DIR}/run_qc/ {TMB_MSI} ")
     print('Workflow finished, no error')
@@ -139,7 +153,7 @@ onsuccess:
     shell("find {RUN_DIR}/{runid} -maxdepth 1 -type f -user $USER -name  \"SampleSheet_*.csv\" -exec chmod g+rw {{}} \;")
     shell("find {DEMUX_DIR}/TSO500_Demux/{runid}_* -group $USER -exec chgrp -f {GROUP} {{}} \;")
     shell("find {DEMUX_DIR}/TSO500_Demux/{runid}_* \( -type f -user $USER -exec chmod g+rw {{}} \; \) , \( -type d -user $USER -exec chmod g+rwx {{}} \; \)")
-    shell("echo 'TSO500 pipeline {VERSION} with TSO500_app {TSO500} ,TSO170_app {TSO170} completed successfully  on run: {runid}' | mutt -s 'TSO500 Pipeline: {runid}' -a {DEMUX_STATS} {QC_STAT} {TMB_MSI_MERGE} {MAIL} ")
+    shell("if [ -f {RESULT_DIR}/run_qc/Fusion_error_{runid}.txt ]; then cat {RESULT_DIR}/run_qc/Fusion_error_{runid}.txt ; else echo 'TSO500 pipeline {VERSION} with TSO500_app {TSO500} ,TSO170_app {TSO170} completed successfully  on run' ; fi | mutt -s 'TSO500 Pipeline: {runid}' -a {DEMUX_STATS} {QC_STAT} {TMB_MSI_MERGE} {MAIL} ")
     shell("find .snakemake/ logs {runid}.yaml -group $USER -exec chgrp -f {GROUP} {{}} \;")
     shell("find .snakemake/ logs {runid}.yaml \( -type f -user $USER -exec chmod g+rw {{}} \; \) , \( -type d -user $USER -exec chmod g+rwx {{}} \; \)")
 
@@ -288,12 +302,13 @@ rule launchRNA_App:
         ref = config['TSO170_reference'],
         RNA_app = config['TSO170_app'],
         out_dir = RESULT_DIR + '/{sample}',
-        dir = DEMUX_DIR + '/FastqFolder/{sample}'
+        dir = DEMUX_DIR + '/FastqFolder/{sample}',
+        fusion = RESULT_DIR + '/{sample}/TruSightTumor170_Analysis_*/RNA_{sample}/{sample}_Fusions.csv'
     shell:
         '''
          if [ -d "{params.out_dir}" ]; then rm -Rf {params.out_dir}; fi
          {PIPELINE}/scripts/TSO170_app.sh -fastq {params.dir} {params.ref} {params.out_dir}
-
+         {PIPELINE}/scripts/check_fusion.py {params.fusion}         
         '''
 
 rule DNA_QC:
