@@ -67,7 +67,7 @@ with open(samplesheet, 'rt') as IN:
     other = df3[df3['Matched_DNA'] == False]
     if not other.empty:
         df4 = df.loc[other.index.tolist()]
-        df5 = df4.loc[df4['Matched_DNA'] != 'NA', ['Sample_ID', 'Matched_DNA']] #The NA here implies unpaired RNA.
+        df5 = df4.loc[(df4['Matched_DNA'] != 'NA') & (df4['Matched_DNA'] != 'PENDING'), ['Sample_ID', 'Matched_DNA']] #The NA here implies unpaired RNA.
         #pp(df4)
         #pp(df5)
         PAIRRD = df5.set_index('Sample_ID').T.to_dict()
@@ -92,7 +92,7 @@ if UNPAIRR:
 #pp(DNA_VCF)
 
     
-pp(DATA)
+#pp(DATA)
 #KEY=(DATA.keys())
 #pp(key)
 runid = config['RUNID']
@@ -119,7 +119,7 @@ samples = []
 for sample in DATA.values():
     for s in sample:
         samples.append(s)
-pp(samples)
+#pp(samples)
 
 onstart:
     print('Started workflow')
