@@ -1,1 +1,3 @@
-dag.png input.yaml snakemake.commands
+dag.png
+input.yaml
+snakemake.commands
