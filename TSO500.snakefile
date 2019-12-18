@@ -56,25 +56,25 @@ with open(samplesheet, 'rt') as IN:
     df = pd.DataFrame(lines3, columns = header)
     df.dropna(axis = 0, how = 'all', thresh = 10, inplace = True)
     #pp(df)
-    df1 = df.loc[(df['Manifest'] == 'PoolDNA') & (df['Matched_RNA'] != 'PENDING'), ['Sample_ID', 'Matched_RNA']] 
-    #pp(df1)
-    PAIRDR = df1.set_index('Sample_ID').T.to_dict()
-    #pp(PAIRDR)
-    df2 = df.loc[df['Manifest'] == 'PoolRNA', ['Matched_DNA']]
+    df0 = df.loc[(df['Manifest'] == 'PoolDNA') & (df['Matched_RNA'] != 'PENDING') & (df['Matched_RNA'] != 'NA'), ['Matched_RNA']]
+    df01 = df0.isin(DATA['RNA'])
+    otherRNA = df01[df01['Matched_RNA'] == False]
+    if not otherRNA.empty:
+        df02 = df.loc[otherRNA.index.tolist(), ['Sample_ID', 'Matched_RNA']]
+        PAIRDR2 = df02.set_index('Sample_ID').T.to_dict() 
     
+    df1 = df.loc[(df['Manifest'] == 'PoolDNA') & (df['Matched_RNA'] != 'PENDING') & (~df.Sample_ID.isin(PAIRDR2.keys())), ['Sample_ID', 'Matched_RNA']] 
+    PAIRDR = df1.set_index('Sample_ID').T.to_dict()
+    
+    df2 = df.loc[df['Manifest'] == 'PoolRNA', ['Matched_DNA']]
     df3 = df2.isin(PAIRDR.keys())
-    #pp(df3)
     other = df3[df3['Matched_DNA'] == False]
     if not other.empty:
         df4 = df.loc[other.index.tolist()]
         df5 = df4.loc[(df4['Matched_DNA'] != 'NA') & (df4['Matched_DNA'] != 'PENDING'), ['Sample_ID', 'Matched_DNA']] #The NA here implies unpaired RNA.
-        #pp(df4)
-        #pp(df5)
         PAIRRD = df5.set_index('Sample_ID').T.to_dict()
-        #pp(PAIRRD)
         df6 = df4.loc[df4['Matched_DNA'] == 'NA', ['Sample_ID']]
         UNPAIRR = df6['Sample_ID'].values.tolist()
-        #pp(UNPAIRR) 
         
 VCFdone_temp = ['{rdir}/{dna}/Results/{dna}_{rna}.{runid}.merge_vcf.done'.format(rdir = RESULT_DIR, rna = PAIRDR[sample]['Matched_RNA'], dna = sample, runid = config['RUNID']) for sample in PAIRDR.keys()]
 VCFdone = [t.replace('_NA', '') for t in VCFdone_temp]
@@ -88,10 +88,16 @@ if PAIRRD:
 if UNPAIRR:
     VCFdone += ['{rdir}/{rna}/Results/{rna}.{runid}.merge_vcf_RNAonly.done'.format(rdir = RESULT_DIR, rna = sample, runid = config['RUNID']) for sample in UNPAIRR]
 
-#pp(VCFdone)
-#pp(DNA_VCF)
+RNA_SP = dict()
+RNA_FS = dict()
+if PAIRDR2:
+    for sample in PAIRDR2.keys():
+        VCFdone += ['{rdir}/{dna}/Results/{dna}.{runid}.merge_vcf_2runs.done'.format(rdir = RESULT_DIR, dna = sample, runid = config['RUNID'])]
+        spath = '{rdir}/{rna}/TruSightTumor170_Analysis_*/RNA_{rna}/{rna}_SpliceVariants.vcf'.format(rdir = RESULT_DIR, rna = PAIRDR2[sample]['Matched_RNA'])
+        fuspath = '{rdir}/{rna}/TruSightTumor170_Analysis_*/RNA_{rna}/{rna}_Fusions.csv'.format(rdir = RESULT_DIR, rna = PAIRDR2[sample]['Matched_RNA'])
+        RNA_SP[sample] = glob.glob(spath)
+        RNA_FS[sample] = glob.glob(fuspath)
 
-    
 #pp(DATA)
 #KEY=(DATA.keys())
 #pp(key)
@@ -375,7 +381,7 @@ rule merge_VCF_dna:
         gzip -f {RESULT_DIR}/{wildcards.sample}/Results/{wildcards.sample}.merged.vcf
         '''
 
-rule merge_VCF_paired_separate_runs:
+rule merge_VCF_paired_separate_runs_older_dna:
     input:
         #rna_done = RESULT_DIR + '/{rna}/{runid}_{rna}_RNA.done',
         rna_done = rules.launchRNA_App.output,
@@ -383,7 +389,7 @@ rule merge_VCF_paired_separate_runs:
     output:
         touch(RESULT_DIR + '/{sample}/Results/{sample}.{runid}.merge_vcf_2runs.done')
     params:
-        rulename = 'merge_VCF_paired_separate_runs.{sample}',
+        rulename = 'merge_VCF_paired_separate_runs_older_dna.{sample}',
         resources = config['merge_VCF'],
         dna = lambda wildcards: PAIRRD[wildcards.sample]['Matched_DNA']
     shell:
@@ -423,3 +429,30 @@ rule merge_VCF_rna:
         {PIPELINE}/scripts/merge_vcfs.py NULL {RESULT_DIR}/{wildcards.sample}/TruSightTumor170_Analysis_*/RNA_{wildcards.sample}/{wildcards.sample}_SpliceVariants.vcf {RESULT_DIR}/{wildcards.sample}/TruSightTumor170_Analysis_*/RNA_{wildcards.sample}/{wildcards.sample}_Fusions.csv {RESULT_DIR}/{wildcards.sample}/Results/{wildcards.sample}.merged.vcf
         gzip -f {RESULT_DIR}/{wildcards.sample}/Results/{wildcards.sample}.merged.vcf
         '''
+
+rule merge_VCF_paired_separate_runs_older_rna:
+    input:
+        dna_done = rules.launchDNA_App.output,
+        rna_sp = lambda wildcards: RNA_SP[wildcards.sample],
+        rna_fs = lambda wildcards: RNA_FS[wildcards.sample]
+    output:
+        touch(RESULT_DIR + '/{sample}/Results/{sample}.{runid}.merge_vcf_2runs.done')
+    params:
+        rulename = 'merge_VCF_paired_separate_runs_older_rna.{sample}',
+        resources = config['merge_VCF'],
+        rna = lambda wildcards: PAIRDR2[wildcards.sample]['Matched_RNA']
+    shell:
+        '''
+        module load python/3.7
+        module load blat/3.5
+        module load seqtk/1.3
+        #delete any preexisting fusion_contigs.fa, etc
+        cd {RESULT_DIR}/{wildcards.sample}/Results/
+        if [ -f fusion_contigs.fa ]; then rm -f fusion_contigs.fa; fi
+        if [ -f fusion_ref_pos.bed ]; then rm -f fusion_ref_pos.bed; fi
+        if [ -f fusion_contigs.psl ]; then rm -f fusion_contigs.psl; fi    
+        {PIPELINE}/scripts/merge_vcfs.py {RESULT_DIR}/{wildcards.sample}/Logs_Intermediates/SmallVariantFilter/{wildcards.sample}/{wildcards.sample}_SmallVariants.genome.vcf {input.rna_sp} {input.rna_fs} {RESULT_DIR}/{wildcards.sample}/Results/{wildcards.sample}_{params.rna}.merged.vcf
+        gzip -f {RESULT_DIR}/{wildcards.sample}/Results/{wildcards.sample}_{params.rna}.merged.vcf
+        touch {RESULT_DIR}/{wildcards.sample}/Results/{wildcards.sample}_{params.rna}.merge_vcf.done
+        '''
+
