@@ -41,6 +41,7 @@ with open(samplesheet, 'rt') as S:
 lines3 = []
 PAIRDR = dict()
 PAIRRD = dict()
+PAIRDR2 = dict()
 UNPAIRR = []
 VCFdone_temp = []
 VCFdone = []
