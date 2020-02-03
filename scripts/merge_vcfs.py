@@ -109,15 +109,15 @@ if not (argv[2] == "NULL") & (argv[3] == "NULL"):
             SPfields2 = SPfields1[1].split('|')
             if (SPfields2[3] == 'EGFR') or (SPfields2[3] == 'MET') or (SPfields2[3] == 'AR'):
                 #pp(SP)
-                #SPfields = SP.split('\t')
+                SPfields = SP.split('\t')
                 #SPfields[4] = SPfields[4].replace('DEL', 'CNV')
-                #SPfields[5] = '.'
+                SPfields[5] = '.'
                 #SPfields[7] = SPfields[7].replace('DEL', 'CNV')
                 #SPfields[8] = 'GT:CN'
                 #SPfields[9] = './.:1'
-                #SPfin = '\t'.join(SPfields)
-                #VCF.append(SPfin.rstrip())
-                VCF.append(SP.rstrip())
+                SPfin = '\t'.join(SPfields)
+                VCF.append(SPfin.rstrip())
+                #VCF.append(SP.rstrip())
    
     VCF = list(filter(None, VCF))
     flag = 0
