@@ -109,7 +109,7 @@ TSO170=config['TSO170_version']
 DEMUX_STATS= expand(DEMUX_DIR + '/TSO500_Demux/{runid}_{data}/Reports/{runid}_{data}.html',runid = config['RUNID'],data = DATA.keys())
 #DNA_MERGE_QC=expand(RESULT_DIR + '/run_qc/DNA_QC_{runid}.xlsx',runid = config['RUNID'])
 #RNA_MERGE_QC=expand(RESULT_DIR + '/run_qc/RNA_QC_{runid}.xlsx',runid = config['RUNID'])
-TMB_MSI_MERGE=expand(RESULT_DIR + '/run_qc/TMB_MSI_{runid}.xlsx',runid = config['RUNID'])
+#TMB_MSI_MERGE=expand(RESULT_DIR + '/run_qc/TMB_MSI_{runid}.xlsx',runid = config['RUNID'])
 QC_STAT=touch(expand(RESULT_DIR + '/run_qc/{data}_QC_{runid}.xlsx',runid = config['RUNID'],data = DATA.keys()))
 
 runqc = RESULT_DIR + '/run_qc'
@@ -117,7 +117,14 @@ runqc = RESULT_DIR + '/run_qc'
 if not os.path.exists(runqc):
  os.makedirs(runqc)
 
-DNA_QC_PATH= expand(RESULT_DIR + '/{sample}/Results/MetricsReport.tsv',sample=DATA['DNA'])
+if 'DNA' in DATA:
+ TMB_MSI_MERGE=expand(RESULT_DIR + '/run_qc/TMB_MSI_{runid}.xlsx',runid = config['RUNID'])
+ DNA_QC_PATH= expand(RESULT_DIR + '/{sample}/Results/MetricsReport.tsv',sample=DATA['DNA'])
+ TMB_MSI= expand(RESULT_DIR + '/{sample}/Results/{sample}_BiomarkerReport.txt',sample=DATA['DNA'])
+else:
+ DNA_QC_PATH= "None"
+ TMB_MSI_MERGE = "None"
+ TMB_MSI = "None"
 #pp(DNA_QC_PATH)
 
 
@@ -132,7 +139,7 @@ else:
  RNA_QC_PATH = "None"
  RNA_summary = "None"
 
-TMB_MSI= expand(RESULT_DIR + '/{sample}/Results/{sample}_BiomarkerReport.txt',sample=DATA['DNA'])
+#TMB_MSI= expand(RESULT_DIR + '/{sample}/Results/{sample}_BiomarkerReport.txt',sample=DATA['DNA'])
 #pp(TMB_MSI)
 
 samples = []
@@ -160,7 +167,8 @@ onsuccess:
     shell("find {RUN_DIR}/{runid} -maxdepth 1 -type f -user $USER -name  \"SampleSheet_*.csv\" -exec chmod g+rw {{}} \;")
     shell("find {DEMUX_DIR}/TSO500_Demux/{runid}_* -group $USER -exec chgrp -f {GROUP} {{}} \;")
     shell("find {DEMUX_DIR}/TSO500_Demux/{runid}_* \( -type f -user $USER -exec chmod g+rw {{}} \; \) , \( -type d -user $USER -exec chmod g+rwx {{}} \; \)")
-    shell("if [ -f {RESULT_DIR}/run_qc/Fusion_error_{runid}.txt ]; then cat {RESULT_DIR}/run_qc/Fusion_error_{runid}.txt ; else echo 'TSO500 pipeline {VERSION} with TSO500_app {TSO500} ,TSO170_app {TSO170} completed successfully  on run' ; fi | mutt -s 'TSO500 Pipeline: {runid}' -a {DEMUX_STATS} {QC_STAT} {TMB_MSI_MERGE} {MAIL} ")
+#    shell("if [ -f {RESULT_DIR}/run_qc/Fusion_error_{runid}.txt ]; then cat {RESULT_DIR}/run_qc/Fusion_error_{runid}.txt ; else echo 'TSO500 pipeline {VERSION} with TSO500_app {TSO500} ,TSO170_app {TSO170} completed successfully  on run' ; fi | mutt -s 'TSO500 Pipeline: {runid}' -a {DEMUX_STATS} {QC_STAT} {TMB_MSI_MERGE} {MAIL} ")
+    shell("if [ -f {RESULT_DIR}/run_qc/Fusion_error_{runid}.txt ]; then cat {RESULT_DIR}/run_qc/Fusion_error_{runid}.txt ; else echo 'TSO500 pipeline {VERSION} with TSO500_app {TSO500} ,TSO170_app {TSO170} completed successfully  on run' ; fi | if [ -f {RESULT_DIR}/run_qc/TMB_MSI_{runid}.xlsx ]; then mutt -s 'TSO500 Pipeline: {runid}' -a {DEMUX_STATS} {QC_STAT} {TMB_MSI_MERGE} {MAIL} ; else mutt -s 'TSO500 Pipeline: {runid}' -a {DEMUX_STATS} {QC_STAT} {MAIL} ; fi ")
     shell("find .snakemake/ logs {runid}.yaml -group $USER -exec chgrp -f {GROUP} {{}} \;")
     shell("find .snakemake/ logs {runid}.yaml \( -type f -user $USER -exec chmod g+rw {{}} \; \) , \( -type d -user $USER -exec chmod g+rwx {{}} \; \)")
 
@@ -170,7 +178,7 @@ onerror:
         shell("find {RESULT_DIR}/{sample}/ -group $USER -exec chgrp -f {GROUP} {{}} \;")
         shell("find {RESULT_DIR}/{sample}/ \( -type f -user $USER -exec chmod g+rw {{}} \; \) , \( -type d -user $USER -exec chmod g+rwx {{}} \; \)")
     shell("find {RESULT_DIR}/run_qc -group $USER -exec chgrp -f {GROUP} {{}} \;")
-    shell("find {RESULT_DIR}/run_qc \( -type f -user $USER -exec chmod g+rw {{}} \; \) , \( -type d -user $USER -exec chmod g+rwx {{}} \; \)")
+    shell("find {RESULT_DIR}/run_qc \( -type f -user $USER -exec chmod g+rw {{}} \; \) , \( -type d -user $USER -exec chmod g+rwx {{}} \; \)") 
     shell("find {RUN_DIR}/{runid} -maxdepth 1 -type f -group $USER -name  \"SampleSheet_*.csv\" -exec chgrp -f {GROUP} {{}} \;")
     shell("find {RUN_DIR}/{runid} -maxdepth 1 -type f -user $USER -name  \"SampleSheet_*.csv\" -exec chmod g+rw {{}} \;")
     shell("find {DEMUX_DIR}/TSO500_Demux/{runid}_* -group $USER -exec chgrp -f {GROUP} {{}} \;")
