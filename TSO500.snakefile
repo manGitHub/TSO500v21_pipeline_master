@@ -318,12 +318,19 @@ rule launchRNA_App:
         RNA_app = config['TSO170_app'],
         out_dir = RESULT_DIR + '/{sample}',
         dir = DEMUX_DIR + '/FastqFolder/{sample}',
-        fusion = RESULT_DIR + '/{sample}/TruSightTumor170_Analysis_*/RNA_{sample}/{sample}_Fusions.csv'
+        fusion = RESULT_DIR + '/{sample}/TruSightTumor170_Analysis_*/RNA_{sample}/{sample}_Fusions.csv',
+        report = RESULT_DIR + '/{sample}/TruSightTumor170_Analysis_*/rnaseqc/report.html',
+        bam = RESULT_DIR + '/{sample}/TruSightTumor170_Analysis_*/RNA_IntermediateFiles/Alignment/{sample}.bam',
+        one = '{sample}'
     shell:
         '''
+         module load rnaseqc/1.1.8 java/1.8.0_11 picard samtools R
          if [ -d "{params.out_dir}" ]; then rm -Rf {params.out_dir}; fi
          {PIPELINE}/scripts/TSO170_app.sh -fastq {params.dir} {params.ref} {params.out_dir}
-         {PIPELINE}/scripts/check_fusion.py {params.fusion}         
+         
+         {PIPELINE}/scripts/rnaseqc.py {RESULT_DIR}/{params.one}/TruSightTumor170_Analysis_*/RNA_IntermediateFiles/Alignment/*.bam {params.one}
+         {PIPELINE}/scripts/check_fusion.py {params.fusion}
+          
         '''
 
 rule DNA_QC:
@@ -332,7 +339,6 @@ rule DNA_QC:
     output:
         gene = RESULT_DIR + '/{sample}/Results/{sample}_{runid}.failGenes',
 	hotspot_depth = RESULT_DIR + '/{sample}/Results/{sample}_{runid}.hotspot.depth',
-#        touch(RESULT_DIR + '/run_qc/{runid}.done')        
     params:
         rulename = 'DNA_QC.{sample}',
         bam = RESULT_DIR + '/{sample}/Logs_Intermediates/StitchedReads/{sample}/{sample}.stitched.bam',
