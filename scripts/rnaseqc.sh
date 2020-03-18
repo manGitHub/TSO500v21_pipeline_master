@@ -1,5 +1,5 @@
 #!/bin/bash
-
+# this script runs picard preprocessing and RNASeQC
 module load java/1.8.0_11
 module load picard
 
@@ -15,3 +15,5 @@ module load rnaseqc
 java -jar $RNASEQCPATH/RNA-SeQC_v1.1.8.jar -r /data/Compass/Ref/hg19/TSO170_Res/genomes/Homo_sapiens/UCSC/hg19/Sequence/WholeGenomeFasta/genome.fa  -rRNA /data/Compass/Tools/TSO500_pipeline_vg/scripts/rRNA_interval_TSO170.txt -o $3 -s "$2|$1_dd.bam|$2" -t /data/Compass/Ref/hg19/TSO170_Res/genomes/Homo_sapiens/UCSC/hg19/Annotation/gencode.v19.annotation_filtered_20160301.gtf
 
 rm $1_RG.bam $1_markdp.txt $1_dd.bam $1_dd.bam.bai
+
+touch $4

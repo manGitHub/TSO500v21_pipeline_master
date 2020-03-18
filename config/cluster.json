@@ -7,7 +7,7 @@
     'demuxStats': "--partition=quick,norm --time=00:30:00 --mem=1G",
     'sampleFolders': "--partition=quick,norm --time=01:00:00 --mem=2G",
     'app': "--partition=ccr,norm --exclusive --time=20:00:00 --mem=150G --cpus-per-task=56 --gres=lscratch:200",
-    'DNA_QC': "--partition=quick,norm --time=04:00:00 --mem=20G",
+    'DNA_QC': "--partition=quick,norm --time=04:00:00 --mem=40G",
     'merge_VCF': "--partition=quick,norm --time=01:00:00 --mem=50G",
     'group': "Compass",
     'mails': "-c jung.kim3@nih.gov  -c manoj.tyagi@nih.gov  -c sushma.nagaraj@nih.gov  -c vineela.gangalapudi@nih.gov -c yujin.lee@nih.gov",

@@ -135,10 +135,12 @@ else:
 if 'RNA' in DATA:
  RNA_QC_PATH =expand(RESULT_DIR + '/{sample}/TruSightTumor170_Analysis*/RNA_SampleMetricsReport.txt',sample=DATA['RNA'])
  RNA_summary =expand(RESULT_DIR + '/{sample}/TruSightTumor170_Analysis*/Summary.tsv',sample=DATA['RNA'])
+ RNASeQC =expand(RESULT_DIR + '/{sample}/TruSightTumor170_Analysis*/rnaseqc/metrics.tsv',sample=DATA['RNA'])
+ RNASeQC_summary = expand(RESULT_DIR + '/run_qc/RNASeQC_{runid}.xlsx',runid = config['RUNID'])
 else:
  RNA_QC_PATH = "None"
  RNA_summary = "None"
-
+ RNASeQC = "None"
 #TMB_MSI= expand(RESULT_DIR + '/{sample}/Results/{sample}_BiomarkerReport.txt',sample=DATA['DNA'])
 #pp(TMB_MSI)
 
@@ -154,6 +156,7 @@ onstart:
 
 onsuccess:
     shell(" {PIPELINE}/scripts/Fusion_summary.py Fusion_error_{runid}.txt {RESULT_DIR}/run_qc/ {RNA_summary} ")
+    shell(" {PIPELINE}/scripts/merge_rnaseqc.py RNASeQC_{runid}.xlsx {RESULT_DIR}/run_qc/ {RNASeQC} ")
     shell(" {PIPELINE}/scripts/RNA_qc.py RNA_QC_{runid}.xlsx {RESULT_DIR}/run_qc/ {RNA_QC_PATH} ")  
     shell(" {PIPELINE}/scripts/DNA_qc.py DNA_QC_{runid}.xlsx {RESULT_DIR}/run_qc/ {DNA_QC_PATH} ")
     shell(" {PIPELINE}/scripts/TMB_MSI.py TMB_MSI_{runid}.xlsx {RESULT_DIR}/run_qc/ {TMB_MSI} ")
@@ -167,8 +170,8 @@ onsuccess:
     shell("find {RUN_DIR}/{runid} -maxdepth 1 -type f -user $USER -name  \"SampleSheet_*.csv\" -exec chmod g+rw {{}} \;")
     shell("find {DEMUX_DIR}/TSO500_Demux/{runid}_* -group $USER -exec chgrp -f {GROUP} {{}} \;")
     shell("find {DEMUX_DIR}/TSO500_Demux/{runid}_* \( -type f -user $USER -exec chmod g+rw {{}} \; \) , \( -type d -user $USER -exec chmod g+rwx {{}} \; \)")
-#    shell("if [ -f {RESULT_DIR}/run_qc/Fusion_error_{runid}.txt ]; then cat {RESULT_DIR}/run_qc/Fusion_error_{runid}.txt ; else echo 'TSO500 pipeline {VERSION} with TSO500_app {TSO500} ,TSO170_app {TSO170} completed successfully  on run' ; fi | mutt -s 'TSO500 Pipeline: {runid}' -a {DEMUX_STATS} {QC_STAT} {TMB_MSI_MERGE} {MAIL} ")
-    shell("if [ -f {RESULT_DIR}/run_qc/Fusion_error_{runid}.txt ]; then cat {RESULT_DIR}/run_qc/Fusion_error_{runid}.txt ; else echo 'TSO500 pipeline {VERSION} with TSO500_app {TSO500} ,TSO170_app {TSO170} completed successfully  on run' ; fi | if [ -f {RESULT_DIR}/run_qc/TMB_MSI_{runid}.xlsx ]; then mutt -s 'TSO500 Pipeline: {runid}' -a {DEMUX_STATS} {QC_STAT} {TMB_MSI_MERGE} {MAIL} ; else mutt -s 'TSO500 Pipeline: {runid}' -a {DEMUX_STATS} {QC_STAT} {MAIL} ; fi ")
+#    shell("if [ -f {RESULT_DIR}/run_qc/Fusion_error_{runid}.txt ]; then cat {RESULT_DIR}/run_qc/Fusion_error_{runid}.txt ; else echo 'TSO500 pipeline {VERSION} with TSO500_app {TSO500} ,TSO170_app {TSO170} completed successfully  on run' ; fi | if [ -f {RESULT_DIR}/run_qc/TMB_MSI_{runid}.xlsx ]; then mutt -s 'TSO500 Pipeline: {runid}' -a {DEMUX_STATS} {QC_STAT} {TMB_MSI_MERGE} {MAIL} ; else mutt -s 'TSO500 Pipeline: {runid}' -a {DEMUX_STATS} {QC_STAT} {MAIL} ; fi ")
+    shell("if [ -f {RESULT_DIR}/run_qc/Fusion_error_{runid}.txt ]; then cat {RESULT_DIR}/run_qc/Fusion_error_{runid}.txt ; else echo 'TSO500 pipeline {VERSION} with TSO500_app {TSO500} ,TSO170_app {TSO170} completed successfully  on run' ; fi | if [[ -f {RESULT_DIR}/run_qc/TMB_MSI_{runid}.xlsx && -f {RESULT_DIR}/run_qc/RNASeQC_{runid}.xlsx ]]; then mutt -s 'TSO500 Pipeline: {runid}' -a {DEMUX_STATS} {QC_STAT} {TMB_MSI_MERGE} {MAIL} {RNASeQC_summary} ; elif [[ -f {RESULT_DIR}/run_qc/TMB_MSI_{runid}.xlsx &&  ! -f {RESULT_DIR}/run_qc/RNASeQC_{runid}.xlsx ]] ; then mutt -s 'TSO500 Pipeline: {runid}' -a {DEMUX_STATS} {QC_STAT} {TMB_MSI_MERGE} {MAIL} ; else mutt -s 'TSO500 Pipeline: {runid}' -a {DEMUX_STATS} {QC_STAT} {MAIL} ; fi ") 
     shell("find .snakemake/ logs {runid}.yaml -group $USER -exec chgrp -f {GROUP} {{}} \;")
     shell("find .snakemake/ logs {runid}.yaml \( -type f -user $USER -exec chmod g+rw {{}} \; \) , \( -type d -user $USER -exec chmod g+rwx {{}} \; \)")
 
@@ -199,6 +202,7 @@ rule all:
         expand(RESULT_DIR + '/{sample}/{runid}_{sample}_RNA.done',runid = config['RUNID'],sample = DATA['RNA']),
         expand(RESULT_DIR + '/{sample}/Results/{sample}_{runid}.failGenes',runid = config['RUNID'],sample = DATA['DNA']),
         expand(RESULT_DIR + '/{sample}/Results/{sample}_{runid}.hotspot.depth',runid = config['RUNID'],sample = DATA['DNA']),
+        expand(RESULT_DIR + '/{sample}/{runid}_{sample}_RNASeQC.done',runid = config['RUNID'],sample = DATA['RNA']),
         VCFdone
 
 rule sampleSheet:
@@ -319,8 +323,8 @@ rule launchRNA_App:
         out_dir = RESULT_DIR + '/{sample}',
         dir = DEMUX_DIR + '/FastqFolder/{sample}',
         fusion = RESULT_DIR + '/{sample}/TruSightTumor170_Analysis_*/RNA_{sample}/{sample}_Fusions.csv',
-        report = RESULT_DIR + '/{sample}/TruSightTumor170_Analysis_*/rnaseqc/report.html',
-        bam = RESULT_DIR + '/{sample}/TruSightTumor170_Analysis_*/RNA_IntermediateFiles/Alignment/{sample}.bam',
+#        report = RESULT_DIR + '/{sample}/TruSightTumor170_Analysis_*/rnaseqc/report.html',
+#        bam = RESULT_DIR + '/{sample}/TruSightTumor170_Analysis_*/RNA_IntermediateFiles/Alignment/{sample}.bam',
         one = '{sample}'
     shell:
         '''
@@ -328,7 +332,7 @@ rule launchRNA_App:
          if [ -d "{params.out_dir}" ]; then rm -Rf {params.out_dir}; fi
          {PIPELINE}/scripts/TSO170_app.sh -fastq {params.dir} {params.ref} {params.out_dir}
          
-         {PIPELINE}/scripts/rnaseqc.py {RESULT_DIR}/{params.one}/TruSightTumor170_Analysis_*/RNA_IntermediateFiles/Alignment/*.bam {params.one}
+#         {PIPELINE}/scripts/rnaseqc.py {RESULT_DIR}/{params.one}/TruSightTumor170_Analysis_*/RNA_IntermediateFiles/Alignment/*.bam {params.one}
          {PIPELINE}/scripts/check_fusion.py {params.fusion}
           
         '''
@@ -354,6 +358,25 @@ rule DNA_QC:
 
 	{PIPELINE}/scripts/TSO500_QC.sh {params.dir} {params.bam} {params.bed}  {params.script} {params.runid} {params.hotspot} {params.size} 
         '''
+
+rule RNA_QC:
+    input:
+         out = RESULT_DIR + '/{sample}/{runid}_{sample}_RNA.done'
+    output:
+         RESULT_DIR + '/{sample}/{runid}_{sample}_RNASeQC.done'
+    params:
+         resources = config['DNA_QC'],
+         rulename = 'RNA_QC.{sample}',
+         bam = RESULT_DIR + '/{sample}/TruSightTumor170_Analysis_*/RNA_IntermediateFiles/Alignment/{sample}.bam',
+         one = '{sample}'
+    shell:
+        '''
+         module load rnaseqc/1.1.8 java/1.8.0_11 picard samtools R
+         {PIPELINE}/scripts/rnaseqc.py {params.one} {runid} {RESULT_DIR}/{params.one}/TruSightTumor170_Analysis_*/RNA_IntermediateFiles/Alignment/*.bam
+
+        '''
+
+
 
 rule merge_VCF_paired:
     input:
@@ -470,4 +493,3 @@ rule merge_VCF_paired_separate_runs_older_rna:
         gzip -f {RESULT_DIR}/{wildcards.sample}/Results/{wildcards.sample}_{params.rna}.merged.vcf
         touch {RESULT_DIR}/{wildcards.sample}/Results/{wildcards.sample}_{params.rna}.merge_vcf.done
         '''
-
