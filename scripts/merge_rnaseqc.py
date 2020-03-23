@@ -11,6 +11,7 @@ import sys
 import os.path
 
 
+
 if (sys.argv[3])  == 'None' :
     print "no RNA"
 else: 
