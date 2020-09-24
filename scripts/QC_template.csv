@@ -1,0 +1,61 @@
+[Run QC Metrics]			
+Metric (UOM)	LSL Guideline	USL Guideline
+PCT_PF_READS (%)	NA	NA
+PCT_Q30_R1 (%)	NA	NA
+PCT_Q30_R2 (%)	NA	NA
+		
+[Analysis Status]		
+	NA	
+COMPLETED_ALL_STEPS	TRUE	
+FAILED_STEPS	NA	
+STEPS_NOT_EXECUTED	NA	
+		
+[DNA Library QC Metrics]		
+Metric (UOM)	LSL Guideline	USL Guideline
+CONTAMINATION_SCORE (NA)	0	3106
+CONTAMINATION_P_VALUE (NA)	0.000	0.049
+		
+[DNA Library QC Metrics for Small Variant Calling and TMB]		
+Metric (UOM)	LSL Guideline	USL Guideline
+MEDIAN_INSERT_SIZE (bp)	70	NA
+MEDIAN_EXON_COVERAGE (Count)	150	NA
+PCT_EXON_50X (%)	90.0	NA
+		
+[DNA Library QC Metrics for MSI]		
+Metric (UOM)	LSL Guideline	USL Guideline
+USABLE_MSI_SITES (Count)	40	NA
+		
+[DNA Library QC Metrics for CNV]		
+Metric (UOM)	LSL Guideline	USL Guideline
+COVERAGE_MAD (Count)	0.000	0.210
+MEDIAN_BIN_COUNT_CNV_TARGET (Count)	1.0	NA
+		
+[DNA Expanded Metrics]		
+Metric (UOM)	LSL Guideline	USL Guideline
+TOTAL_PF_READS (Count)	NA	NA
+MEAN_FAMILY_SIZE (Count)	NA	NA
+MEDIAN_TARGET_COVERAGE (Count)	NA	NA
+PCT_CHIMERIC_READS (%)	NA	NA
+PCT_EXON_100X (%)	NA	NA
+PCT_READ_ENRICHMENT (%)	NA	NA
+PCT_USABLE_UMI_READS (%)	NA	NA
+MEAN_TARGET_COVERAGE (Count)	NA	NA
+PCT_ALIGNED_READS (%)	NA	NA
+PCT_CONTAMINATION_EST (%)	NA	NA
+PCT_PF_UQ_READS (%)	NA	NA
+PCT_TARGET_0.4X_MEAN (%)	NA	NA
+PCT_TARGET_100X (%)	NA	NA
+PCT_TARGET_250X (%)	NA	NA
+			
+[RNA Library QC Metrics]		
+Metric (UOM)	LSL Guideline	USL Guideline
+MEDIAN_CV_GENE_500X (%)	0.00	93.00
+TOTAL_ON_TARGET_READS (Count)	9000000	NA
+MEDIAN_INSERT_SIZE (Count)	80	NA
+		
+[RNA Expanded Metrics]		
+Metric (UOM)	LSL Guideline	USL Guideline
+PCT_CHIMERIC_READS (%)	NA	NA
+PCT_ON_TARGET_READS (%)	NA	NA
+SCALED_MEDIAN_GENE_COVERAGE (Count)	NA	NA
+TOTAL_PF_READS (Count)	NA	NA
