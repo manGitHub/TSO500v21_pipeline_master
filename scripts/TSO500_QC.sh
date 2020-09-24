@@ -1,19 +1,33 @@
 #!/bin/bash
 
+# This script runs fail exons, fail genes and hotspot depth for the TSO500 bam files.
+
+# python3 {params.script}/DNA_qc.py {params.dir}/Logs_Intermediates/StitchedRealigned/*/*.bam {params.dir} {params.bed} {params.hotspot} {params.size} {params.script}
+
+# $1 = bam file
+
+# $2 = path to output directory
+
+# $3 = bed file
+
+# $4 = hotspot file
+
+# $5 = genome size
+
+# $6 = path to the failed_Exon_Final.pl script
 
 module load bedtools/2.22.0 samtools/0.1.19
 
 cd $1
 
-sample=$(echo $1 |awk -F"/" '{ print $(NF-1) }')
+echo -e "chr\tstart\tend\tgene\tposition\tdepth" > $2.depth_per_base
 
-echo -e "chr\tstart\tend\tgene\tposition\tdepth" > $sample.depth_per_base
+samtools view -hF 0x400 -q 30 -L $5  $4 | samtools view -ShF 0x4 - | samtools view -SuF 0x200 - | bedtools coverage -abam - -b $5 -d >> $2.depth_per_base
 
-samtools view -hF 0x400 -q 30 -L $3  $2 | samtools view -ShF 0x4 - | samtools view -SuF 0x200 - | bedtools coverage -abam - -b $3 -d >> $sample.depth_per_base
-
-perl $4/failed_Exon_Final.pl $sample.depth_per_base 50 ${sample}_${5}.failExons ${sample}_${5}.failGenes
+perl $6/failed_Exon_Final.pl $2.depth_per_base 50 $2.failExons $2.failGenes
 
 
-slopBed -i $6 -g $7 -b 50 > ${sample}_Region.bed
-samtools view -hF 0x400 -q 30 -L ${sample}_Region.bed $2 | samtools view -ShF 0x4 - | samtools view -SuF 0x200 - | bedtools coverage -abam - -b $6 > ${sample}_${5}.hotspot.depth
-rm $sample.depth_per_base ${sample}_Region.bed
+slopBed -i $7 -g $8 -b 50 > $2_Region.bed
+samtools view -hF 0x400 -q 30 -L $2_Region.bed $4 | samtools view -ShF 0x4 - | samtools view -SuF 0x200 - | bedtools coverage -abam - -b $7 > $2.hotspot.depth
+rm $2.depth_per_base $2_Region.bed
+

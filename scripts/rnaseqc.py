@@ -11,15 +11,15 @@ import os
 import sys
 import subprocess
 
-bam = glob.glob(sys.argv[3])
-sample = sys.argv[1]
-bam = str(bam).strip("['']")
-bam = os.path.dirname(bam)
-bam = bam + "/" + sample
-head, sep, tail = bam.partition('RNA_IntermediateFiles')
-qc = head + "rnaseqc"
-done = head.rsplit('/',2)
-done = done[0] + "/" + sys.argv[2] + "_" + sample + "_RNASeQC.done"
-import subprocess
 
-subprocess.run(["/data/Compass/Tools/TSO500_pipeline_vg/scripts/rnaseqc.sh", bam, sample,qc,done])
+bam = glob.glob(sys.argv[1])
+bam = str(bam).strip("['']")
+file = os.path.basename(bam)
+sample = str(file).strip("[.bam]")
+bam = os.path.dirname(bam)
+bamfile = bam + "/" + sample
+gtf = sys.argv[2]
+genome =sys.argv[3]
+dir = sys.argv[4] + "/Results"
+subprocess.run(["/data/Compass/dev/gangalapudiv2/TSO_new/scripts/rnaseqc.sh",bamfile,sample,gtf,genome,dir])
+

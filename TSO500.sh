@@ -1,7 +1,7 @@
 #! /bin/bash
 
 function usage() {
-    echo "USAGE: $0 --runid [RUNID] --dryrun --rundir [optional: /path/to/run/dir] --demuxdir [optional: /path/to/demultiplexing/dir] --resultsdir [optional: /path/to/App/results/dir] --pipeline [optional: /path/to/pipeline/dir]"
+    echo "USAGE: $0 --runid [RUNID]  --rundir [optional: /path/to/run/dir] --demuxdir [optional: /path/to/demultiplexing/dir] --resultsdir [optional: /path/to/App/results/dir] --pipeline [optional: /path/to/pipeline/dir] --samplesheet [optional: /path/to/custom/samplesheet] --dryrun "
 }
 function fail() {
     echo "$@"
@@ -18,11 +18,13 @@ DEMUX_DIR=/data/Compass/DATA/NextSeq
 RESULT_DIR=/data/Compass/Analysis/ProcessedResults_NexSeq/TSO500_Results
 PIPELINE_HOME=/data/Compass/Tools/TSO500_pipeline
 APP_DIR=/data/Compass/Tools
+#SAMPLESHEET=$RUN_DIR/$runid/SampleSheet.csv
 
 while [ "$1" != "" ]; do
     case $1 in
         --runid )	shift
 			runid=$1
+                        SAMPLESHEET=$RUN_DIR/$runid/SampleSheet.csv
 			;;
         --dryrun )	dryrun=1
 			;;
@@ -37,7 +39,10 @@ while [ "$1" != "" ]; do
 			;;
         --pipeline )	shift
 			PIPELINE_HOME=$1
-			;;
+ 			;;
+        --samplesheet ) shift
+                        SAMPLESHEET=$1
+                        ;;
         -h | --help )	usage
 			exit
     esac
@@ -50,7 +55,9 @@ export RESULT_DIR
 export PIPELINE_HOME
 export APP_DIR
 export DATE=`date +'%m%d%Y_%H%M%S'`
+export SAMPLESHEET
 
+echo SAMPLESHEET: $SAMPLESHEET
 echo RUN_DIR: $RUN_DIR
 echo DEMUX_DIR: $DEMUX_DIR
 echo RESULT_DIR: $RESULT_DIR

@@ -1,27 +1,26 @@
-#! /usr/bin/env python
-# coding: utf-8
+#!/usr/bin/env python3
+#!/bin/bash
 
+# coding: utf-8
+## this step launches the rnaseqc.sh script to run rnaseqc tool
 import glob
 import pandas as pd
 import csv
 import re
 import os
 import sys
+import subprocess
 
-
-if (sys.argv[3])  == 'None' :
-    print "no DNA"
-else:
-    path = ','.join(sys.argv[3:])
-    mypath =path.split(",")
-    print mypath
-    qc= sys.argv[2]  
-    ##path to qc report
-
-    file = sys.argv[1]
-
-    df = pd.concat([pd.read_csv(f,delimiter='\t',skiprows =9,skipfooter=3,engine='python') for f in mypath], axis=1)
-    df = df.T.drop_duplicates().T   # to remove duplicated columns by column contents
-
-    df.to_excel(qc + file,index=False,header=False,sheet_name="Run_metrics")
-
+manifest = sys.argv[3]
+bam = glob.glob(sys.argv[1])
+hotspot = sys.argv[4]
+genome = sys.argv[5]
+bam = str(bam).strip("['']")
+file = os.path.basename(bam)
+bam = os.path.dirname(bam)
+bamfile = bam + "/" + file
+dir = sys.argv[2]
+sample = os.path.basename(dir)
+#sample = str(pair).strip("[_Pair]")
+script = sys.argv[6]
+subprocess.run(["/data/Compass/dev/gangalapudiv2/TSO_new/scripts/TSO500_QC.sh",dir,sample,file,bamfile,manifest,script,hotspot,genome])
