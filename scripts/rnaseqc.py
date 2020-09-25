@@ -11,7 +11,6 @@ import os
 import sys
 import subprocess
 
-
 bam = glob.glob(sys.argv[1])
 bam = str(bam).strip("['']")
 file = os.path.basename(bam)
@@ -21,5 +20,6 @@ bamfile = bam + "/" + sample
 gtf = sys.argv[2]
 genome =sys.argv[3]
 dir = sys.argv[4] + "/Results"
-subprocess.run(["/data/Compass/dev/gangalapudiv2/TSO_new/scripts/rnaseqc.sh",bamfile,sample,gtf,genome,dir])
+rnaseqc = sys.argv[5] + "/rnaseqc.sh" 
+subprocess.run([rnaseqc,bamfile,sample,gtf,genome,dir])
 

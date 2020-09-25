@@ -212,7 +212,7 @@ onstart:
 
 onsuccess:
     shell(" {PIPELINE}/scripts/merge_rnaseqc.py RNASeQC_{runid}.xlsx {RESULT_DIR}/run_qc/ {RNASeQC} ")
-    shell(" {PIPELINE}/scripts/merge_TSO500_QC.py TSO500_QC_{runid}.xlsx {RESULT_DIR}/run_qc/ {TSO500_QC} ")
+    shell(" {PIPELINE}/scripts/merge_TSO500_QC.py TSO500_QC_{runid}.xlsx {RESULT_DIR}/run_qc/ {PIPELINE}/scripts  {TSO500_QC} ")
     shell(" {PIPELINE}/scripts/MSI.py {RESULT_DIR}/run_qc/MSI_TMB_{runid}.xlsx {MSI} ")
     shell(" {PIPELINE}/scripts/TMB.py {RESULT_DIR}/run_qc/MSI_TMB_{runid}.xlsx {TMB} ")
     print('Workflow finished, no error')
@@ -242,7 +242,7 @@ onerror:
     shell("find {RUN_DIR}/{runid} -maxdepth 1 -type f -user $USER -name  \"Analysis_SampleSheet.csv\" -exec chmod g+rw {{}} \;")
     shell("find {DEMUX_DIR}/TSO500_Demux/{runid}* -group $USER -exec chgrp -f {GROUP} {{}} \;")
     shell("find {DEMUX_DIR}/TSO500_Demux/{runid}* \( -type f -user $USER -exec chmod g+rw {{}} \; \) , \( -type d -user $USER -exec chmod g+rwx {{}} \; \)")
-    shell(" if [ -f {RESULT_DIR}/run_qc/{runid}_app_complete.txt ]; then echo 'TSO500 pipeline {VERSION} error occurred  on run: {runid}' | mutt  -s 'TSO500 Pipeline: {runid}' {MAIL} -i {RESULT_DIR}/run_qc/{runid}_app_complete.txt ; else echo 'TSO500 pipeline {VERSION} error occurred  on run: {runid}' | mutt  -s 'TSO500 Pipeline: {runid}' {MAIL} ")
+    shell(" if [ -f {RESULT_DIR}/run_qc/{runid}_app_complete.txt ]; then echo 'TSO500 pipeline {VERSION} error occurred  on run: {runid}' | mutt  -s 'TSO500 Pipeline: {runid}' {MAIL} -i {RESULT_DIR}/run_qc/{runid}_app_complete.txt ; else echo 'TSO500 pipeline {VERSION} error occurred  on run: {runid}' | mutt  -s 'TSO500 Pipeline: {runid}' {MAIL} ; fi ")
     shell("find .snakemake/ logs {runid}.yaml \( -type f -user $USER -exec chmod g+rw {{}} \; \) , \( -type d -user $USER -exec chmod g+rwx {{}} \; \)")
     shell("find .snakemake/ logs {runid}.yaml -group $USER -exec chgrp -f {GROUP} {{}} \;")
 
@@ -367,15 +367,15 @@ rule DNA_RNA_QC:
         rna_genome = config['rna'],
     shell:
         '''
-        if [ -f {RESULT_DIR}/{wildcards.pair}/Logs_Intermediates/StitchedRealigned/*/*.bam ] 
-        then  
-           python3 {params.script}/DNA_qc.py {params.dir}/Logs_Intermediates/StitchedRealigned/*/*.bam {params.dir} {params.bed} {params.hotspot} {params.size} {params.script}
-        else
-           echo "no DNA in this pair"
-        fi
+#        if [ -f {RESULT_DIR}/{wildcards.pair}/Logs_Intermediates/StitchedRealigned/*/*.bam ] 
+#        then  
+#           python3 {params.script}/DNA_qc.py {params.dir}/Logs_Intermediates/StitchedRealigned/*/*.bam {params.dir} {params.bed} {params.hotspot} {params.size} {params.script}
+#        else
+#           echo "no DNA in this pair"
+#        fi
         if [ -f  {RESULT_DIR}/{wildcards.pair}/Logs_Intermediates/RnaAlignment/*/*.bam ]
         then
-           python3 {params.script}/rnaseqc.py {params.dir}/Logs_Intermediates/RnaAlignment/*/*.bam {params.gtf} {params.rna_genome} {params.dir}
+           python3 {params.script}/rnaseqc.py {params.dir}/Logs_Intermediates/RnaAlignment/*/*.bam {params.gtf} {params.rna_genome} {params.dir} {params.script}
         else
            echo "no RNA in this pair"
         fi

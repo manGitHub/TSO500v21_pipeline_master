@@ -16,7 +16,7 @@ import os
 import sys
 import numpy as np
 
-path = ','.join(sys.argv[3:])
+path = ','.join(sys.argv[4:])
 mypath =path.split(",")
 qc= sys.argv[2]  
 ##path to qc report
@@ -24,6 +24,7 @@ file = sys.argv[1]
 df = pd.concat([pd.read_csv(f,delimiter='\t',skiprows =8,skipfooter=3,engine='python') for f in mypath], axis=1)
 df = df.T.drop_duplicates().T   # to remove duplicated columns by column contents
 df1 = df.filter(like='Unnamed: 3')
-df_header = pd.read_csv("/data/Compass/dev/gangalapudiv2/TSO_new/scripts/QC_template.csv",delimiter='\t',engine='python')
+template = sys.argv[3] + "/QC_template.csv"
+df_header = pd.read_csv(template,delimiter='\t',engine='python')
 df_final = pd.concat([df_header,df1], axis=1)
 df_final.to_excel(qc + file,index=False,header=False,sheet_name="Run_metrics")

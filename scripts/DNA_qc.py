@@ -23,4 +23,5 @@ dir = sys.argv[2]
 sample = os.path.basename(dir)
 #sample = str(pair).strip("[_Pair]")
 script = sys.argv[6]
-subprocess.run(["/data/Compass/dev/gangalapudiv2/TSO_new/scripts/TSO500_QC.sh",dir,sample,file,bamfile,manifest,script,hotspot,genome])
+TSO500_QC = script + "/TSO500_QC.sh"
+subprocess.run([TSO500_QC,dir,sample,file,bamfile,manifest,script,hotspot,genome])
