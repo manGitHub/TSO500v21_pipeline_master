@@ -367,12 +367,12 @@ rule DNA_RNA_QC:
         rna_genome = config['rna'],
     shell:
         '''
-#        if [ -f {RESULT_DIR}/{wildcards.pair}/Logs_Intermediates/StitchedRealigned/*/*.bam ] 
-#        then  
-#           python3 {params.script}/DNA_qc.py {params.dir}/Logs_Intermediates/StitchedRealigned/*/*.bam {params.dir} {params.bed} {params.hotspot} {params.size} {params.script}
-#        else
-#           echo "no DNA in this pair"
-#        fi
+        if [ -f {RESULT_DIR}/{wildcards.pair}/Logs_Intermediates/StitchedRealigned/*/*.bam ] 
+        then  
+           python3 {params.script}/DNA_qc.py {params.dir}/Logs_Intermediates/StitchedRealigned/*/*.bam {params.dir} {params.bed} {params.hotspot} {params.size} {params.script}
+        else
+           echo "no DNA in this pair"
+        fi
         if [ -f  {RESULT_DIR}/{wildcards.pair}/Logs_Intermediates/RnaAlignment/*/*.bam ]
         then
            python3 {params.script}/rnaseqc.py {params.dir}/Logs_Intermediates/RnaAlignment/*/*.bam {params.gtf} {params.rna_genome} {params.dir} {params.script}
