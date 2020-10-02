@@ -16,7 +16,7 @@ fi
 RUN_DIR=/data/Compass/NextSeq_raw
 DEMUX_DIR=/data/Compass/DATA/NextSeq
 RESULT_DIR=/data/Compass/Analysis/ProcessedResults_NexSeq/TSO500_Results
-PIPELINE_HOME=/data/Compass/Tools/TSO500_pipeline
+PIPELINE_HOME=$(dirname "$0")  #/data/Compass/Tools/TSO500_pipeline
 APP_DIR=/data/Compass/Tools
 #SAMPLESHEET=$RUN_DIR/$runid/SampleSheet.csv
 
