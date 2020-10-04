@@ -257,7 +257,10 @@ rule all:
         expand(RESULT_DIR + '/{pair}/{runid}_{pair}_DNA_RNA_QC.done',runid = config['RUNID'],pair=pairs),
         expand(DEMUX_DIR + '/TSO500_Demux/{runid}/{runid}_demuxSummary.done',runid = config['RUNID']),
         expand(RESULT_DIR + '/{pair}/{runid}_{pair}_parse_CN.done',runid = config['RUNID'],pair=pairs),
-        expand(RESULT_DIR + '/{pair}/{runid}_{pair}_QCI_zip.done',runid = config['RUNID'],pair=pairs)
+        expand(RESULT_DIR + '/{pair}/{runid}_{pair}_QCI_zip.done',runid = config['RUNID'],pair=pairs),
+        expand(RESULT_DIR + '/{pair}/{runid}_{pair}_filter_splice.done',runid = config['RUNID'],pair=pairs)
+
+
 
 rule Demultiplexing:
     input:
@@ -411,9 +414,32 @@ rule parse_CN:
             touch {output.done}
             '''
 
-rule QCI_input:
+rule Filter_Splice:
     input:
        RESULT_DIR + '/{pair}/{runid}_{pair}_parse_CN.done'
+    output:
+       done = RESULT_DIR + '/{pair}/{runid}_{pair}_filter_splice.done'
+    params:
+        rulename = 'Filter_Splice.{pair}',
+        resources = config['DNA_QC'],
+        dir = RESULT_DIR + '/{pair}',
+        runid = config['RUNID'],
+        script = PIPELINE + '/scripts'
+    shell:
+        '''
+        module load bedtools/2.29.2
+        if [ -f {RESULT_DIR}/{wildcards.pair}/Results/{wildcards.pair}/*/*_SpliceVariants.vcf ]
+        then
+          intersectBed -a {RESULT_DIR}/{wildcards.pair}/Results/{wildcards.pair}/*/*_SpliceVariants.vcf -b {params.script}/TSO500_snv.bed -wa -header | if awk -v FS='\t' -v OFS='\t' '/1/ {{$6 = "."}} 1' |grep  "PASS" > {params.dir}/Results/{wildcards.pair}/temp.vcf ; then cat {RESULT_DIR}/{wildcards.pair}/Results/{wildcards.pair}/*/*_SpliceVariants.vcf | grep -e  "^#" |cat - {params.dir}/Results/{wildcards.pair}/temp.vcf > {RESULT_DIR}/{wildcards.pair}/Results/{wildcards.pair}/{wildcards.pair}_filtered_splice.vcf ; rm {params.dir}/Results/{wildcards.pair}/temp.vcf ; else rm {params.dir}/Results/{wildcards.pair}/temp.vcf ;  fi 
+        else
+          echo "no RNA sample in this run"
+        fi
+        touch {output.done}
+        '''
+
+rule QCI_input:
+    input:
+       RESULT_DIR + '/{pair}/{runid}_{pair}_filter_splice.done'
     output:
        done = RESULT_DIR + '/{pair}/{runid}_{pair}_QCI_zip.done'
     params:
@@ -425,12 +451,18 @@ rule QCI_input:
 
     shell:
         '''
-        if [ -f {RESULT_DIR}/{wildcards.pair}/Results/{wildcards.pair}/*/*_AllFusions.csv ] && [ -f {RESULT_DIR}/{wildcards.pair}/Results/{wildcards.pair}/*/*_MergedSmallVariants.genome.vcf.gz ]
+        if [ -f {RESULT_DIR}/{wildcards.pair}/Results/{wildcards.pair}/*/*_AllFusions.csv ] && [ -f {RESULT_DIR}/{wildcards.pair}/Results/{wildcards.pair}/*/*_MergedSmallVariants.genome.vcf.gz ] && [ -f {RESULT_DIR}/{wildcards.pair}/Results/{wildcards.pair}/{wildcards.pair}_filtered_splice.vcf ]
         then
-          zip -j  {RESULT_DIR}/{wildcards.pair}/Results/{wildcards.pair}.zip {RESULT_DIR}/{wildcards.pair}/Results/{wildcards.pair}/{wildcards.pair}_CombinedVariantOutput.tsv {RESULT_DIR}/{wildcards.pair}/Results/{wildcards.pair}/*/*_AllFusions.csv {RESULT_DIR}/{wildcards.pair}/Results/{wildcards.pair}/*/*_SpliceVariants.vcf {RESULT_DIR}/{wildcards.pair}/Results/{wildcards.pair}/*/*_MergedSmallVariants.genome.vcf.gz {RESULT_DIR}/{wildcards.pair}/Results/{wildcards.pair}/*/*_CopyNumberVariants_92genes.vcf
-        elif [ -f {RESULT_DIR}/{wildcards.pair}/Results/{wildcards.pair}/*/*_AllFusions.csv ] && [ ! -f {RESULT_DIR}/{wildcards.pair}/Results/{wildcards.pair}/*/*_MergedSmallVariants.genome.vcf.gz ]
+          zip -j  {RESULT_DIR}/{wildcards.pair}/Results/{wildcards.pair}.zip {RESULT_DIR}/{wildcards.pair}/Results/{wildcards.pair}/{wildcards.pair}_CombinedVariantOutput.tsv {RESULT_DIR}/{wildcards.pair}/Results/{wildcards.pair}/*/*_AllFusions.csv {RESULT_DIR}/{wildcards.pair}/Results/{wildcards.pair}/{wildcards.pair}_filtered_splice.vcf {RESULT_DIR}/{wildcards.pair}/Results/{wildcards.pair}/*/*_MergedSmallVariants.genome.vcf.gz {RESULT_DIR}/{wildcards.pair}/Results/{wildcards.pair}/*/*_CopyNumberVariants_92genes.vcf
+        elif [ -f {RESULT_DIR}/{wildcards.pair}/Results/{wildcards.pair}/*/*_AllFusions.csv ] && [ -f {RESULT_DIR}/{wildcards.pair}/Results/{wildcards.pair}/*/*_MergedSmallVariants.genome.vcf.gz ] && [ ! -f {RESULT_DIR}/{wildcards.pair}/Results/{wildcards.pair}/{wildcards.pair}_filtered_splice.vcf ]
         then
-          zip -j  {RESULT_DIR}/{wildcards.pair}/Results/{wildcards.pair}.zip {RESULT_DIR}/{wildcards.pair}/Results/{wildcards.pair}/{wildcards.pair}_CombinedVariantOutput.tsv {RESULT_DIR}/{wildcards.pair}/Results/{wildcards.pair}/*/*_AllFusions.csv {RESULT_DIR}/{wildcards.pair}/Results/{wildcards.pair}/*/*_SpliceVariants.vcf 
+          zip -j  {RESULT_DIR}/{wildcards.pair}/Results/{wildcards.pair}.zip {RESULT_DIR}/{wildcards.pair}/Results/{wildcards.pair}/{wildcards.pair}_CombinedVariantOutput.tsv {RESULT_DIR}/{wildcards.pair}/Results/{wildcards.pair}/*/*_AllFusions.csv  {RESULT_DIR}/{wildcards.pair}/Results/{wildcards.pair}/*/*_MergedSmallVariants.genome.vcf.gz {RESULT_DIR}/{wildcards.pair}/Results/{wildcards.pair}/*/*_CopyNumberVariants_92genes.vcf
+        elif [ -f {RESULT_DIR}/{wildcards.pair}/Results/{wildcards.pair}/*/*_AllFusions.csv ] && [ -f {RESULT_DIR}/{wildcards.pair}/Results/{wildcards.pair}/{wildcards.pair}_filtered_splice.vcf ] && [ ! -f {RESULT_DIR}/{wildcards.pair}/Results/{wildcards.pair}/*/*_MergedSmallVariants.genome.vcf.gz ]
+        then
+          zip -j  {RESULT_DIR}/{wildcards.pair}/Results/{wildcards.pair}.zip {RESULT_DIR}/{wildcards.pair}/Results/{wildcards.pair}/{wildcards.pair}_CombinedVariantOutput.tsv {RESULT_DIR}/{wildcards.pair}/Results/{wildcards.pair}/*/*_AllFusions.csv {RESULT_DIR}/{wildcards.pair}/Results/{wildcards.pair}/{wildcards.pair}_filtered_splice.vcf
+        elif [ -f {RESULT_DIR}/{wildcards.pair}/Results/{wildcards.pair}/*/*_AllFusions.csv ] && [ ! -f {RESULT_DIR}/{wildcards.pair}/Results/{wildcards.pair}/{wildcards.pair}_filtered_splice.vcf ] && [ ! -f {RESULT_DIR}/{wildcards.pair}/Results/{wildcards.pair}/*/*_MergedSmallVariants.genome.vcf.gz ]
+        then
+          zip -j  {RESULT_DIR}/{wildcards.pair}/Results/{wildcards.pair}.zip {RESULT_DIR}/{wildcards.pair}/Results/{wildcards.pair}/{wildcards.pair}_CombinedVariantOutput.tsv {RESULT_DIR}/{wildcards.pair}/Results/{wildcards.pair}/*/*_AllFusions.csv 
         elif [ -f {RESULT_DIR}/{wildcards.pair}/Results/{wildcards.pair}/*/*_MergedSmallVariants.genome.vcf.gz ] && [ ! -f {RESULT_DIR}/{wildcards.pair}/Results/{wildcards.pair}/*/*_AllFusions.csv ]
         then
           zip -j  {RESULT_DIR}/{wildcards.pair}/Results/{wildcards.pair}.zip {RESULT_DIR}/{wildcards.pair}/Results/{wildcards.pair}/{wildcards.pair}_CombinedVariantOutput.tsv {RESULT_DIR}/{wildcards.pair}/Results/{wildcards.pair}/*/*_MergedSmallVariants.genome.vcf.gz {RESULT_DIR}/{wildcards.pair}/Results/{wildcards.pair}/*/*_CopyNumberVariants_92genes.vcf
