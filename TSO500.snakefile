@@ -379,6 +379,8 @@ rule DNA_RNA_QC:
         if [ -f  {RESULT_DIR}/{wildcards.pair}/Logs_Intermediates/RnaAlignment/*/*.bam ]
         then
            python3 {params.script}/rnaseqc.py {params.dir}/Logs_Intermediates/RnaAlignment/*/*.bam {params.gtf} {params.rna_genome} {params.dir} {params.script}
+           rm {params.dir}/Logs_Intermediates/RnaAlignment/*/*_RG.bam
+           rm {params.dir}/Logs_Intermediates/RnaAlignment/*/*_dd.bam*
         else
            echo "no RNA in this pair"
         fi
