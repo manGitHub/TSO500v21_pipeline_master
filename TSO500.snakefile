@@ -233,9 +233,9 @@ onsuccess:
 
 onerror:
     print('An error occured')
-    for pair in pairs:
-        shell("find {RESULT_DIR}/{pair}/ -group $USER -exec chgrp -f {GROUP} {{}} \;")
-        shell("find {RESULT_DIR}/{pair}/ \( -type f -user $USER -exec chmod g+rw {{}} \; \) , \( -type d -user $USER -exec chmod g+rwx {{}} \; \)")
+#    for pair in pairs:
+#        shell("find {RESULT_DIR}/{pair}/ -group $USER -exec chgrp -f {GROUP} {{}} \;")
+#        shell("find {RESULT_DIR}/{pair}/ \( -type f -user $USER -exec chmod g+rw {{}} \; \) , \( -type d -user $USER -exec chmod g+rwx {{}} \; \)")
     shell("find {RESULT_DIR}/run_qc -group $USER -exec chgrp -f {GROUP} {{}} \;")
     shell("find {RESULT_DIR}/run_qc \( -type f -user $USER -exec chmod g+rw {{}} \; \) , \( -type d -user $USER -exec chmod g+rwx {{}} \; \)") 
     shell("find {RUN_DIR}/{runid} -maxdepth 1 -type f -group $USER -name  \"Analysis_SampleSheet.csv\" -exec chgrp -f {GROUP} {{}} \;")
