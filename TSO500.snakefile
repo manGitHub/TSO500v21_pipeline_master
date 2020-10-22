@@ -16,8 +16,6 @@ GROUP = config['group']
 VERSION = config['version']
 APP_DIR = os.environ['APP_DIR']
 RESULT_DIR = os.environ['RESULT_DIR']
-DATA = defaultdict(list)
-PAIR = defaultdict(list)
 SAMPLESHEET = os.environ['SAMPLESHEET']
 F = config['RUNID'].split('_')
 #pp(F)
@@ -26,10 +24,8 @@ for f in F:
     if re.match('^\d{4}$', f):
         flowcell = re.sub('^\w', '', F[F.index(f) + 1])
 
-#samplesheet = RUN_DIR + '/' + config['RUNID'] + '/SampleSheet.csv'
-analysis = RUN_DIR + '/' + config['RUNID'] + '/Analysis_SampleSheet.csv'
-demux_done = DEMUX_DIR + '/TSO500_Demux/' + config['RUNID'] + '/' + config['RUNID'] + '_demux.done'
-
+DATA = defaultdict(list)
+PAIR = defaultdict(list)
 linefull = []
 with open(SAMPLESHEET, 'rt') as S:
     text = S.read()  #reading in the samplesheet file
@@ -46,108 +42,9 @@ with open(SAMPLESHEET, 'rt') as S:
             lines3[0] = lines3[0].strip()
             DATA['DNA'].append(lines3[0])
 
-lines3 = []
-PAIRDR = dict()
-PAIRRD = dict()
-PAIRDR2 = dict()
-tops = []
-with open(SAMPLESHEET, 'rt') as IN:
-    text = IN.read()
-    text = text.replace('\r', '')
-    lines = text.split('[Data]')
-    top = text.split('Sample_ID')
-    top = top[0].split('\n')
-    for i in top:
-        tops.append(i.split(','))
-    lines2 = lines[1].split('\n')
-    header = lines2[1].split(',')
-    lines2 = lines2[2:]
-    for L in lines2:
-        lines3.append(L.split(','))
-    top =pd.DataFrame(tops)
-    top = top.mask(top.eq('None')).dropna()
-    df = pd.DataFrame(lines3, columns = header)
-    df.dropna(axis = 0, how = 'all', thresh = 7, inplace = True)
-    df['Pair'] = df['Pair'].str.replace('_Pair','')
-#    pp(df) this is the complete samplesheet dataframe
-    emptyPair =	 df[df.Pair == '']
-    if not emptyPair.empty: 
-         print("--------------------------------------------")
-         print("--------------------------------------------")
-         print("The following sample is missing Pairing information. Please fix it, before launching the pipeline.")
-         print("\n")
-         pp(emptyPair)
-         print("--------------------------------------------")
-         print("--------------------------------------------")
-    df = df[df.Pair != '']
-    df0 = df.loc[(df['Sample_Type'] == 'DNA') & (df['Pair'] != 'PENDING') & (df['Pair'] != "NA")]
-    df01 = df0.isin(DATA['RNA'])
-    otherRNA = df01[df01['Pair'] == False]
-    if not otherRNA.empty:
-        df02 = df.loc[otherRNA.index.tolist()]        
-        oldrna = df02
-        df02 =df02.drop('Pair',axis=1)
-        df02['Pair'] = df02['Sample_ID'] + "_Pair"
-        oldrna = oldrna.rename(columns = {"Sample_ID":"Pair","Pair":"Sample_ID"})
-       	oldrna = oldrna.replace({"DNA":"RNA"})       
-        oldrna = oldrna[['Sample_ID','Sample_Name','Sample_Plate','Sample_Well','Index_ID','index','index2','Sample_Type','Pair']]
-        oldrna['Pair'] = oldrna['Pair'] + "_Pair"
-        merge1 = pd.concat([df02,oldrna], axis =0)
-        PAIRDR2 = df02.set_index('Sample_ID').T.to_dict() 
-#        pp(merge1)This is New DNA and Old RNA
-    else:
-        merge1 = pd.DataFrame()
-    df1 = df.loc[(df['Sample_Type'] == 'DNA') & (df['Pair'] != 'PENDING') & (~df.Sample_ID.isin(PAIRDR2.keys()))] 
-    nomatch = df1.loc[(df1['Pair'] == "NA")]
-    nomatch = nomatch.drop('Pair',axis=1)
-    nomatch['Pair'] = nomatch['Sample_ID'] + "_NoPair"
-#    pp(nomatch)  This is DNA only samples
-    if not df1.empty:
-        newDRpair = df1.loc[(df1['Pair'] != "NA")]
-        newDRpair = newDRpair.drop('Pair',axis=1)
-        newDRpair['Pair'] = newDRpair['Sample_ID'] + "_Pair"
 
-    PAIRDR = df1.set_index('Sample_ID').T.to_dict()
-    df2 = df.loc[df['Sample_Type'] == 'RNA']
-    df3 = df2.isin(PAIRDR.keys())
-    samernadna = df3[df3['Pair'] == True]
-    if not samernadna.empty:
-       df7 = df.loc[samernadna.index.tolist()]
-       df7['Pair'] = df7['Pair'] + "_Pair"
-       merge2 = pd.concat([newDRpair,df7],axis=0)
-#       pp(merge2)  DNA RNA sequenced in the same run
-    else:
-       merge2 = pd.DataFrame()        
-    other = df3[df3['Pair'] == False]
-#    pp(other)
-    if not other.empty:
-        df4 = df.loc[other.index.tolist()]
-        df6 = df4.loc[df4['Pair'] == "NA"] 
-        df6 = df6.drop('Pair',axis=1)
-        df6['Pair'] = df6['Sample_ID'] + "_NoPair"
-        df4 = df4.loc[(df4['Pair'] != "NA") & (df4['Pair'] != 'PENDING')]
-        olddna = df4        
-        df4['Pair'] = df4['Pair'] + "_Pair"
-        olddna = olddna.rename(columns = {"Sample_ID":"Pair","Pair":"Sample_ID"})
-        olddna = olddna.replace({"RNA":"DNA"})
-        olddna = olddna[['Sample_ID','Sample_Name','Sample_Plate','Sample_Well','Index_ID','index','index2','Sample_Type','Pair']]
-        olddna = olddna.drop('Pair',axis=1)
-        olddna['Pair'] = olddna['Sample_ID'] 
-        olddna['Sample_ID'] = olddna['Sample_ID'].str.replace('_Pair', '')        
-        merge3 = pd.concat([df4,olddna],axis=0)
-#        pp(merge3)
-#        df5 = df4.loc[(df4['Pair'] != "NA") & (df4['Pair'] != 'PENDING')] #The NA here implies unpaired RNA.
-    else:
-        merge3 = pd.DataFrame()
-        df6 = pd.DataFrame()
-head =['Sample_ID','Sample_Name','Sample_Plate','Sample_Well','Index_ID','index','index2', 'Sample_Type', 'Pair_ID']
-head = pd.DataFrame(head)
-head = head.transpose()
-merged = pd.concat([merge1,merge2,merge3,df6,nomatch],axis =0,)
-merged.columns = range(merged.shape[1])
-mf = pd.concat([top,head,merged],axis =0,) 
-pp(mf)
-mf.to_csv(analysis,index=False,sep=',',header=False)
+analysis = RUN_DIR + '/' + config['RUNID'] + '/Analysis_SampleSheet.csv'
+demux_done = DEMUX_DIR + '/TSO500_Demux/' + config['RUNID'] + '/' + config['RUNID'] + '_demux.done'
 
 
 runid = config['RUNID']
@@ -233,9 +130,9 @@ onsuccess:
 
 onerror:
     print('An error occured')
-#    for pair in pairs:
-#        shell("find {RESULT_DIR}/{pair}/ -group $USER -exec chgrp -f {GROUP} {{}} \;")
-#        shell("find {RESULT_DIR}/{pair}/ \( -type f -user $USER -exec chmod g+rw {{}} \; \) , \( -type d -user $USER -exec chmod g+rwx {{}} \; \)")
+    for pair in pairs:
+        shell("find {RESULT_DIR}/{pair}/ -group $USER -exec chgrp -f {GROUP} {{}} \;")
+        shell("find {RESULT_DIR}/{pair}/ \( -type f -user $USER -exec chmod g+rw {{}} \; \) , \( -type d -user $USER -exec chmod g+rwx {{}} \; \)")
     shell("find {RESULT_DIR}/run_qc -group $USER -exec chgrp -f {GROUP} {{}} \;")
     shell("find {RESULT_DIR}/run_qc \( -type f -user $USER -exec chmod g+rw {{}} \; \) , \( -type d -user $USER -exec chmod g+rwx {{}} \; \)") 
     shell("find {RUN_DIR}/{runid} -maxdepth 1 -type f -group $USER -name  \"Analysis_SampleSheet.csv\" -exec chgrp -f {GROUP} {{}} \;")
@@ -333,17 +230,19 @@ rule TSO500_app:
 #        mkdir {RESULT_DIR}/{wildcards.pair}
          /data/Compass/Tools/TSO500_App/TSO500_RUO_2.1.0/TSO500_RUO_LocalApp/TruSight_Oncology_500_RUO.sh --engine singularity --analysisFolder {RESULT_DIR}/{wildcards.pair} --resourcesFolder {params.resource} --fastqFolder {params.fastq} --samplePairIDs {wildcards.pair} --sampleSheet {RUN_DIR}/{runid}/Analysis_SampleSheet.csv
 
+##  Parsing the MetricsOutput.tsv file to make sure all steps in TSO app completed successfully.
+
         if [ -f "{RESULT_DIR}/{wildcards.pair}/Results/MetricsOutput.tsv" ]
         then
-         grep -i -B1  "COMPLETED_ALL_STEPS" {RESULT_DIR}/{wildcards.pair}/Results/MetricsOutput.tsv | paste -d " "  - - >> {RESULT_DIR}/run_qc/{runid}_app_complete.txt
+         grep -i -B1 -A1 "COMPLETED_ALL_STEPS" {RESULT_DIR}/{wildcards.pair}/Results/MetricsOutput.tsv | paste -d " "  - - - >> {RESULT_DIR}/run_qc/{runid}_app_complete.txt
          if grep -i {wildcards.pair} {RESULT_DIR}/run_qc/{runid}_app_complete.txt |grep -q TRUE 
          then
           echo "All the steps in TSO500_app completed successfully" 
          else
-          mv "{RESULT_DIR}/{wildcards.pair}" "{RESULT_DIR}/{wildcards.pair}_for_delete"
+          echo "TSO500 app Failed "
          fi
         else
-         mv "{RESULT_DIR}/{wildcards.pair}" "{RESULT_DIR}/{wildcards.pair}_for_delete"
+         echo "TSO500 app Failed"
         fi
 
         if [  -f {RESULT_DIR}/{wildcards.pair}/Results/{wildcards.pair}/*/*_MergedSmallVariants.genome.vcf ]; then  gzip -f {RESULT_DIR}/{wildcards.pair}/Results/{wildcards.pair}/*/*_MergedSmallVariants.genome.vcf ; else echo "This is a RNA only sample" ; fi 
@@ -407,7 +306,7 @@ rule parse_CN:
 
         shell:
             '''
-            if [ -f {params.dir}/Logs_Intermediates/CnvCaller/*/*_foldChange.tsv ]
+            if [ -f {params.dir}/Results/*/*/*_CopyNumberVariants.vcf ]
             then
                python3 {params.script} {params.dir}/Logs_Intermediates/CnvCaller/*/*_foldChange.tsv {params.cnv_genes} {params.dir}/Results/*/*/*_CopyNumberVariants.vcf {params.craft_manifest} {params.thresholds} {params.genome} {params.qci_coords}
             else
@@ -453,6 +352,9 @@ rule QCI_input:
 
     shell:
         '''
+
+##  As we handle DNA-RNA pairs, DNAonly sample and RNAonly samples. We check for three files here and create zip files accordingly. *AllFusions.csv *_MergedSmallVariants.genome.vcf.gz *_filtered_splice.vcf.
+
         if [ -f {RESULT_DIR}/{wildcards.pair}/Results/{wildcards.pair}/*/*_AllFusions.csv ] && [ -f {RESULT_DIR}/{wildcards.pair}/Results/{wildcards.pair}/*/*_MergedSmallVariants.genome.vcf.gz ] && [ -f {RESULT_DIR}/{wildcards.pair}/Results/{wildcards.pair}/{wildcards.pair}_filtered_splice.vcf ]
         then
           zip -j  {RESULT_DIR}/{wildcards.pair}/Results/{wildcards.pair}.zip {RESULT_DIR}/{wildcards.pair}/Results/{wildcards.pair}/{wildcards.pair}_CombinedVariantOutput.tsv {RESULT_DIR}/{wildcards.pair}/Results/{wildcards.pair}/*/*_AllFusions.csv {RESULT_DIR}/{wildcards.pair}/Results/{wildcards.pair}/{wildcards.pair}_filtered_splice.vcf {RESULT_DIR}/{wildcards.pair}/Results/{wildcards.pair}/*/*_MergedSmallVariants.genome.vcf.gz {RESULT_DIR}/{wildcards.pair}/Results/{wildcards.pair}/*/*_CopyNumberVariants_92genes.vcf

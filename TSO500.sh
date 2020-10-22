@@ -1,7 +1,7 @@
 #! /bin/bash
 
 function usage() {
-    echo "USAGE: $0 --runid [RUNID]  --rundir [optional: /path/to/run/dir] --demuxdir [optional: /path/to/demultiplexing/dir] --resultsdir [optional: /path/to/App/results/dir] --pipeline [optional: /path/to/pipeline/dir] --samplesheet [optional: /path/to/custom/samplesheet] --dryrun "
+    echo "USAGE: $0 --rundir [optional: /path/to/run/dir] --runid [RUNID] --demuxdir [optional: /path/to/demultiplexing/dir] --resultsdir [optional: /path/to/App/results/dir] --pipeline [optional: /path/to/pipeline/dir] --samplesheet [optional: /path/to/custom/samplesheet] --dryrun "
 }
 function fail() {
     echo "$@"
@@ -22,14 +22,14 @@ APP_DIR=/data/Compass/Tools
 
 while [ "$1" != "" ]; do
     case $1 in
+        --rundir )	shift
+			RUN_DIR=$1
+			;;
         --runid )	shift
 			runid=$1
                         SAMPLESHEET=$RUN_DIR/$runid/SampleSheet.csv
 			;;
         --dryrun )	dryrun=1
-			;;
-        --rundir )	shift
-			RUN_DIR=$1
 			;;
         --demuxdir )	shift
 			DEMUX_DIR=$1
@@ -85,6 +85,7 @@ if [ "$dryrun" == '1' ];then
     snakemake -nrp --nolock -k -j 3000 -s $PIPELINE_HOME/TSO500.snakefile --configfile $YAML -d `pwd` 
 else
     echo "Executing TSO500 pipeline on RUN: $runid"
+    $PIPELINE_HOME/scripts/analysis_samplesheet.py $SAMPLESHEET $RUN_DIR/$runid/Analysis_SampleSheet.csv
     if [ ! -d "logs" ]; then
         mkdir logs
         chgrp -f Compass logs
