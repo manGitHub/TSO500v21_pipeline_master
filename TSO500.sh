@@ -82,6 +82,7 @@ module load snakemake/5.4.0 &> /dev/null || fail "Could not load module snakemak
 if [ "$dryrun" == '1' ];then
     #Dryrun
     echo "Dryrun"
+    $PIPELINE_HOME/scripts/analysis_samplesheet.py $SAMPLESHEET $RUN_DIR/$runid/Analysis_SampleSheet.csv
     snakemake -nrp --nolock -k -j 3000 -s $PIPELINE_HOME/TSO500.snakefile --configfile $YAML -d `pwd` 
 else
     echo "Executing TSO500 pipeline on RUN: $runid"
