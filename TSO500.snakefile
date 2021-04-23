@@ -127,6 +127,7 @@ onsuccess:
     shell(" if [[ -f {RESULT_DIR}/run_qc/MSI_TMB_{runid}.xlsx && -f {RESULT_DIR}/run_qc/RNASeQC_{runid}.xlsx ]]; then echo '\nTSO500 pipeline {VERSION} with workflow version: {TSO_WORKFLOW} completed successfully' | mutt -s 'TSO500 Pipeline: {runid}' -a {DEMUX_stats} {TSO500_QC_Summary} {MAIL} {RNASeQC_summary} {MSI_TMB} -i {RESULT_DIR}/run_qc/{runid}_app_complete.txt ; elif [[ -f {RESULT_DIR}/run_qc/MSI_TMB_{runid}.xlsx &&  ! -f {RESULT_DIR}/run_qc/RNASeQC_{runid}.xlsx ]] ; then echo '\nTSO500 pipeline {VERSION} with workflow version: {TSO_WORKFLOW} completed successfully' | mutt -s 'TSO500 Pipeline: {runid}' -a {DEMUX_stats} {TSO500_QC_Summary} {MAIL} {MSI_TMB} -i {RESULT_DIR}/run_qc/{runid}_app_complete.txt ; else echo '\nTSO500 pipeline {VERSION} with workflow version: {TSO_WORKFLOW} completed successfully' | mutt -s 'TSO500 Pipeline: {runid}' -a {DEMUX_stats} {TSO500_QC_Summary} {RNASeQC_summary} {MAIL} -i {RESULT_DIR}/run_qc/{runid}_app_complete.txt ; fi ")
     shell("find .snakemake/ logs {runid}.yaml -group $USER -exec chgrp -f {GROUP} {{}} \;")
     shell("find .snakemake/ logs {runid}.yaml \( -type f -user $USER -exec chmod g+rw {{}} \; \) , \( -type d -user $USER -exec chmod g+rwx {{}} \; \)")
+    shell("for i in `cat {DEMUX_DIR}/TSO500_Demux/{runid}/sample_list` ; do rsync -av {DEMUX_DIR}/TSO500_Demux/{runid}/*demux.done {DEMUX_DIR}/FastqFolder/$i ; done")
 
 onerror:
     print('An error occured')
