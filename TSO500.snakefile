@@ -194,19 +194,18 @@ rule demuxSummary:
         resources = config['DNA_QC'],
         dna = DEMUX_DIR + '/TSO500_Demux/{runid}/Logs_Intermediates/FastqGeneration/DNA_Reports',
         rna = DEMUX_DIR + '/TSO500_Demux/{runid}/Logs_Intermediates/FastqGeneration/RNA_Reports',
-	sampleSheet = analysis,
 	dna_out = DEMUX_DIR + '/TSO500_Demux/{runid}/Logs_Intermediates/FastqGeneration/DNA_Reports/{runid}_DNA.csv',
         rna_out = DEMUX_DIR + '/TSO500_Demux/{runid}/Logs_Intermediates/FastqGeneration/RNA_Reports/{runid}_RNA.csv'
     shell:
         '''
         if [ -f {params.dna}/Lane_1/Demultiplex_Stats.csv ]
         then
-	python3 {PIPELINE}/scripts/demux_summary.py {params.dna} {params.dna_out} {params.sampleSheet}
+	python3 {PIPELINE}/scripts/demux_summary.py {params.dna} {params.dna_out} {SAMPLESHEET}
 	fi
 
 	if [ -f {params.rna}/Lane_1/Demultiplex_Stats.csv ]
         then
-        python3 {PIPELINE}/scripts/demux_summary.py {params.rna} {params.rna_out} {params.sampleSheet}
+        python3 {PIPELINE}/scripts/demux_summary.py {params.rna} {params.rna_out} {SAMPLESHEET}
 	fi
         touch {output.demuxSummary_done}
         '''
