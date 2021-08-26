@@ -29,14 +29,16 @@ qci_coords = qci_coords[['Chromosome','Gene','QCI Start','QCI End']]
 qci_coords.columns = ['chr','gene','start','end']
 manifest = pd.concat([manifest,qci_coords]).drop_duplicates(['chr','gene'],keep='last').sort_values(['chr','start'])
 
-# get vcf header, change FORMAT field FC to CN
+# get vcf header, 
+# no longer changing FORMAT field FC to CN
 vcfFile = sys.argv[3]
 with open(vcfFile) as f:
     vcfHeader = [next(f) for x in range(35)]
-FORMAT = [heads for heads in vcfHeader if '##FORMAT' in heads]
-FORMAT = ['##FORMAT=<ID=CN,Number=1,Type=Float,Description="Copy number variant fold change, calculated as ratio of sample to control">\n']
-noFormat = [heads for heads in vcfHeader if '##FORMAT' not in heads]
-vcfHeader = noFormat + FORMAT
+#FORMAT = [heads for heads in vcfHeader if '##FORMAT' in heads]
+#FORMAT = ['##FORMAT=<ID=CN,Number=1,Type=Float,Description="Copy number variant fold change, calculated as ratio of sample to control">\n']
+#noFormat = [heads for heads in vcfHeader if '##FORMAT' not in heads]
+#vcfHeader = noFormat + FORMAT
+
 # read in and empty vcf df
 vcfTbl = pd.read_csv(vcfFile,delimiter='\t',header=35)
 vcfTbl = vcfTbl[0:0]
@@ -56,7 +58,8 @@ vcfTbl.POS = vcfTbl.start
 vcfTbl.ID = '.'
 vcfTbl.FILTER = 'PASS'
 vcfTbl.INFO = 'END=' + vcfTbl.end.astype(str) + ';ANT=' + vcfTbl.gene.astype(str)
-vcfTbl.FORMAT = 'CN'
+#vcfTbl.FORMAT = 'CN'
+vcfTbl.FORMAT = 'FC'
 vcfTbl = vcfTbl.round({vcfTbl.columns[9]:3})
 
 # merge with thresholds, add <dup> <del>
