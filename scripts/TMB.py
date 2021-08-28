@@ -35,11 +35,11 @@ else:
         items[key] = value       
     df = pd.DataFrame(items, index=['TMB - AdjustedNonsynonymousTmbPerMb',])
     df = df.replace(r'"AdjustedNonsynonymousTmbPerMb":','')
-    df = df.astype(float).round(2)
+    df = df.apply(pd.to_numeric,errors='coerce').round(2)
     book = load_workbook(path)
     writer = pd.ExcelWriter(path, engine='openpyxl') 
     writer.book = book
     writer.sheets = {ws.title: ws for ws in book.worksheets}
     for sheetname in writer.sheets:
-        df.to_excel(writer,sheet_name=sheetname, startrow=5,index=True)
+        df.to_excel(writer,sheet_name=sheetname, startrow=5,index=True,na_rep='NaN')
     writer.save()
