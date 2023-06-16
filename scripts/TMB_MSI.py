@@ -10,11 +10,11 @@ import sys
 
 
 if (sys.argv[3])  == 'None' :
-    print "no DNA"
+    print("no DNA")
 else: 
     path = ','.join(sys.argv[3:])
     mypath =path.split(",")
-    #print mypath
+    #print(mypath)
 
     qc= sys.argv[2]
 

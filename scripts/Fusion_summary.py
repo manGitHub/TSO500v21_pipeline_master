@@ -13,11 +13,11 @@ import os.path
 #if os.path.isfile("/data/Compass/dev/gangalapudiv2/NextSeq/TSO500_Demux/(sys.argv[3])_RNA/Reports/(sys.argv[3])_RNA.html"):
 
 if (sys.argv[3])  == 'None' :
-    print "no RNA"
+    print("no RNA")
 else: 
     path = ','.join(sys.argv[3:])
     mypath =path.split(",")
-#    print mypath
+#    print(mypath)
     fusionpath= sys.argv[2]
     file = sys.argv[1]
     df = pd.concat([pd.read_csv(f,delimiter='\t',skiprows=9) for f in mypath])

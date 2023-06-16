@@ -52,7 +52,7 @@ with open(SAMPLESHEET, 'rt') as IN:
     top =pd.DataFrame(tops)
     top = top.mask(top.eq('None')).dropna()
     df = pd.DataFrame(lines3, columns = header)
-    df.dropna(axis = 0, how = 'all', thresh = 7, inplace = True)
+    df.dropna(axis = 0, how = 'all', inplace = True)
     df['Pair'] = df['Pair'].str.replace('_Pair','')
 #    pp(df) this is the complete samplesheet dataframe
     emptyPair =	 df[df.Pair == '']

@@ -12,7 +12,7 @@ import os.path
 # usage: merge_rnaseqc.py outputfilename.xlsx /path/to/the/results/folder  <list of rnaseqc metrics.tsv files> 
 
 if (sys.argv[3])  == 'None' :
-    print "no RNA"
+    print("no RNA")
 else: 
     path = ','.join(sys.argv[3:])
     my_list = path.split(",")

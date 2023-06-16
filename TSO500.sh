@@ -76,8 +76,8 @@ export YAML
 if [ ! -d "$RUN_DIR/$runid" ]; then
     fail "Could not find RUN $runid at the input path $RUN_DIR/"
 fi
-
-module load snakemake/5.4.0 &> /dev/null || fail "Could not load module snakemake/5.4.0"
+module use --prepend /data/Compass/local/lmod/modulefiles
+module load snakemake/7.7.0 &> /dev/null || fail "Could not load module snakemake/7.7.0"
 
 if [ "$dryrun" == '1' ];then
     #Dryrun
@@ -92,7 +92,7 @@ else
         chgrp -f Compass logs
         chmod g+rwx logs
     fi
-    sbatch -e pipeline.%j.%x.e -o pipeline.%j.%x.o --job-name=TSO500.$runid.$DATE --mem=1G --partition=ccr,norm --time=20:00:00 --cpus-per-task=1 $PIPELINE_HOME/submit.sh	
+    sbatch -e pipeline.%j.%x.e -o pipeline.%j.%x.o --job-name=TSO500.$runid.$DATE --mem=1G --partition=rhel8 --time=12:00:00 --cpus-per-task=1 $PIPELINE_HOME/submit.sh	
 fi
 
 
