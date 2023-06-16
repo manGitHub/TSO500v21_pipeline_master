@@ -15,7 +15,7 @@ import os.path
 
 
 if (sys.argv[2])  == 'None' :
-    print "no DNA"
+    print("no DNA")
 else:
     items = {}
     path = (sys.argv[1])

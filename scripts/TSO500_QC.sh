@@ -16,18 +16,19 @@
 
 # $6 = path to the failed_Exon_Final.pl script
 
-module load bedtools/2.22.0 samtools/0.1.19
 
+#module load bedtools/2.22.0 samtools/0.1.19
+module load samtools/0.1.19
 cd $1
 
 echo -e "chr\tstart\tend\tgene\tposition\tdepth" > $2.depth_per_base
 
-samtools view -hF 0x400 -q 30 -L $5  $4 | samtools view -ShF 0x4 - | samtools view -SuF 0x200 - | bedtools coverage -abam - -b $5 -d >> $2.depth_per_base
+samtools view -hF 0x400 -q 30 -L $5  $4 | samtools view -ShF 0x4 - | samtools view -SuF 0x200 - | /data/Compass/local/software/bedtools/2.22.0/bin/bedtools coverage -abam - -b $5 -d >> $2.depth_per_base
 
 perl $6/failed_Exon_Final.pl $2.depth_per_base 50 $2.failExons $2.failGenes
 
 
 slopBed -i $7 -g $8 -b 50 > $2_Region.bed
-samtools view -hF 0x400 -q 30 -L $2_Region.bed $4 | samtools view -ShF 0x4 - | samtools view -SuF 0x200 - | bedtools coverage -abam - -b $7 > $2.hotspot.depth
+samtools view -hF 0x400 -q 30 -L $2_Region.bed $4 | samtools view -ShF 0x4 - | samtools view -SuF 0x200 - | /data/Compass/local/software/bedtools/2.22.0/bin/bedtools coverage -abam - -b $7 > $2.hotspot.depth
 rm $2.depth_per_base $2_Region.bed
 

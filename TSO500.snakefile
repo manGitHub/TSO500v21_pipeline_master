@@ -328,10 +328,10 @@ rule Filter_Splice:
         script = PIPELINE + '/scripts'
     shell:
         '''
-        module load bedtools/2.29.2
+        #module load bedtools/2.29.2
         if [ -f {RESULT_DIR}/{wildcards.pair}/Results/{wildcards.pair}/*/*_SpliceVariants.vcf ]
         then
-          intersectBed -a {RESULT_DIR}/{wildcards.pair}/Results/{wildcards.pair}/*/*_SpliceVariants.vcf -b {params.script}/TSO500_snv.bed -wa -header | if awk -v FS='\t' -v OFS='\t' '/1/ {{$6 = "."}} 1' |grep  "PASS" > {params.dir}/Results/{wildcards.pair}/temp.vcf ; then cat {RESULT_DIR}/{wildcards.pair}/Results/{wildcards.pair}/*/*_SpliceVariants.vcf | grep -e  "^#" |cat - {params.dir}/Results/{wildcards.pair}/temp.vcf > {RESULT_DIR}/{wildcards.pair}/Results/{wildcards.pair}/{wildcards.pair}_filtered_splice.vcf ; rm {params.dir}/Results/{wildcards.pair}/temp.vcf ; else rm {params.dir}/Results/{wildcards.pair}/temp.vcf ;  fi 
+         /data/Compass/local/software/bedtools/2.29.2/bin/intersectBed -a {RESULT_DIR}/{wildcards.pair}/Results/{wildcards.pair}/*/*_SpliceVariants.vcf -b {params.script}/TSO500_snv.bed -wa -header | if awk -v FS='\t' -v OFS='\t' '/1/ {{$6 = "."}} 1' |grep  "PASS" > {params.dir}/Results/{wildcards.pair}/temp.vcf ; then cat {RESULT_DIR}/{wildcards.pair}/Results/{wildcards.pair}/*/*_SpliceVariants.vcf | grep -e  "^#" |cat - {params.dir}/Results/{wildcards.pair}/temp.vcf > {RESULT_DIR}/{wildcards.pair}/Results/{wildcards.pair}/{wildcards.pair}_filtered_splice.vcf ; rm {params.dir}/Results/{wildcards.pair}/temp.vcf ; else rm {params.dir}/Results/{wildcards.pair}/temp.vcf ;  fi 
         else
           echo "no RNA sample in this run"
         fi
