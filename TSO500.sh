@@ -92,7 +92,7 @@ else
         chgrp -f Compass logs
         chmod g+rwx logs
     fi
-    sbatch -e pipeline.%j.%x.e -o pipeline.%j.%x.o --job-name=TSO500.$runid.$DATE --mem=1G --partition=rhel8 --time=12:00:00 --cpus-per-task=1 $PIPELINE_HOME/submit.sh	
+    sbatch -e pipeline.%j.%x.e -o pipeline.%j.%x.o --job-name=TSO500.$runid.$DATE --mem=1G --partition=norm,ccr --time=12:00:00 --cpus-per-task=1 $PIPELINE_HOME/submit.sh	
 fi
 
 
